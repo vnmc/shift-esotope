@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf8">
+		<script src="shiftparser.js"></script>
+		<!--<script src="acorn.js"></script>-->
+		<script src="../src/shift-esotope.js"></script>
+		<script>
+			//var code = 'var [a,b] = [1,2]';
+			//var code = 'function y(p, q=1) { return a[x("b")+1]; }';
+			//var code = 'class A{}';
+			//var code = '[x, y, ...z] = 0';
+			//var code = '({x = 0} = 1)';
+			//var code = '/a/';
+			//var code = '("x")';
+			//var code = 'try { } catch (e) { say(e) }';
+			//var code = '(()=>0)';
+			//var code = 'throw x;';
+			//var code = 'for(const a in b);';
+			//var code = 'a:{break a;}';
+			//var code = 'switch(a){case 1:default:case 2:}';
+			//var code = '(function*() { [...{ x = yield }] = 0; })';
+			//var code = '({set c(x) {}})';
+			//var code = '-a';
+			//var code = '({a})';
+			//var code = '`$$$`';
+			//var code = 'f(...a)';
+			//var code = 'export * from "a"';
+			//var code = 'export {} from "a"';
+			//var code = 'function *a(){yield 2e308}';
+			//var code = 'export {a} from "a"';
+			//var code = 'export {a as b} from "a"';
+			//var code = 'export {a}\n var a;';
+			//var code = 'export default function a(){}';
+			//var code = 'export default 3 + 1';
+			//var code = 'import a from \'c\'';
+			//var code = 'import a, {b,} from \'c\'';
+			//var code = 'import {as as as} from \'as\'';
+			//var code = 'import a, * as b from \'a\'';
+			//var code = '({ a() { super.b(); } });';
+			//var code = '(class extends (a,b) {})';
+			//var code = 'function f() { new.target; }';
+			//var code = 'class A extends B { constructor() { super() } }';
+			//var code = 'function*a(){yield*a}';
+			//var code = 'export default function (){}';
+			//var code = 'export default class {} /* no semi */ false';
+			//var code = '(let[a])';
+			//var code = 'export class A {}';
+			//var code = '(function(i){ return this.pushStack( j >= 0 && j < len ? [ this[ j ] ] : [] ); })';
+			//var code = '!jQuery.isArray( obj ) && ( realStringObj - parseFloat( realStringObj ) + 1 ) >= 0;';
+			//var code = 'type === "array" || length === 0 || typeof length === "number" && length > 0 && ( length - 1 ) in obj;';
+			//var code = 'rcombinators = new RegExp( "^" + whitespace + "*([>+~]|" + whitespace + ")" + whitespace + "*" )';
+			//var code = 'String.fromCharCode( high >> 10 | 0xD800, high & 0x3FF | 0xDC00 )';
+			//var code = 'if ( keys.push( key + " " ) > Expr.cacheLength ) delete cache[ keys.shift() ];'
+			//var code = '({"<":0,"~":1})';
+			//var code = '({["nUmBeR"+9]:"nein"})';
+			//var code = '({"<":0,"\'":1})';
+			//var code = '({ x: 1, x: 2 })';
+			//var code = 'abc[".<"]=0';
+			//var code = '{a,\'<\'}'
+			//var code = '({a:0,"":1})'
+			//var code = 'function wn(n,t,e){var r,u,i=Math.min(n/=255,t/=255,e/=255),a=Math.max(n,t,e),o=a-i,l=(a+i)/2;return o?(u=.5>l?o/(a+i):o/(2-a-i),r=n==a?(t-e)/o+(e>t?6:0):t==a?(e-n)/o+2:(n-t)/o+4,r*=60):(r=NaN,u=l>0&&1>l?0:r),new ln(r,u,l)}';
+			//var code = '(a=0,b*=1)';
+			//var code = '(a = 0 ? b : c, d *= 1)';
+			//var code = '(0).toString()';
+			var code = '"use strict";';
+
+			var d = Date.now();
+			var a = parser.parseScript(code);
+			console.log(Date.now() - d);
+			//var a = parser.parseModule(code);
+			//var aa = acorn.parse(code, { ecmaVersion: 6 });
+
+			console.log(a);
+			console.log('====');
+			d = Date.now();
+			var s = ShiftEsotope.generate(a);
+			console.log(Date.now() - d);
+			console.log(s);
+		</script>
+	</head>
+	<body>
+		<h1>Esotope Test</h1>
+	</body>
+</html>

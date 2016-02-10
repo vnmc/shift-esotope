@@ -1,0 +1,935 @@
+// for f in *.js; do echo; echo // $f; grep testParse $f | sed 's/ *testParse("//' | sed 's/", .*$//'; done
+
+// tests for fixes.js
+(a+=1,b)
+(a,b+=1)
+
+// class-declaration.js
+class A{}
+
+// function-declaration.js
+function hello() { z(); }
+function eval() { }
+function arguments() { }
+function test(t, t) { }
+function eval() { function inner() { "use strict" } }
+function hello(a) { z(); }
+function hello(a, b) { z(); }
+function universe(__proto__) { }
+function test() { "use strict" + 0; }
+function a() {} function a() {}
+function a() { function a() {} function a() {} }
+a: function a(){}
+if (0) function a(){}
+if (0) function a(){} else;
+if (0); else function a(){}
+if (0) function a(){} else function b(){}
+try {} catch (e) { if(0) function e(){} }
+
+// generator-declaration.js
+function* a(){}
+function* a(){yield}
+function* a(){yield a}
+function* yield(){}
+function* a(){({[yield]:a}=0)}
+function* a() {} function a() {}
+function a() { function* a() {} function a() {} }
+
+// lexical-declaration.js
+let a
+{ let a; }
+while(true) var a
+
+// array-binding.js
+[x] = 0
+[x,] = 0
+[x,,] = 0
+[[x]] = 0
+[x, y, ...z] = 0
+[, x,,] = 0
+[...[x]] = 0
+[x, ...{0: y}] = 0
+[x, x] = 0
+[x, ...x] = 0
+[x.a=a] = b
+[x[a]=a] = b
+[...[...a[x]]] = b
+[] = 0
+[{a=0},{a=0}] = 0
+
+// object-binding.js
+({x} = 0)
+({x,} = 0)
+({x,y} = 0)
+({x,y,} = 0)
+({[a]: a} = 1)
+({x = 0} = 1)
+({x = 0,} = 1)
+({x: y} = 0)
+({x: y,} = 0)
+({var: x} = 0)
+({"x": y} = 0)
+({'x': y} = 0)
+({0: y} = 0)
+({0: x, 1: x} = 0)
+({x: y = 0} = 1)
+({x: y = z = 0} = 1)
+({x: [y] = 0} = 1)
+({a:let} = 0);
+({let} = 0);
+({a:yield} = 0);
+({yield} = 0);
+({yield = 0} = 0);
+(function*() { [...{ x = yield }] = 0; })
+
+// array-binding.js
+var [,a] = 0;
+var [a]=[1];
+var [[a]]=0;
+var a, [a] = 0;
+var [a, a] = 0;
+var [a, ...a] = 0;
+try {} catch ([e]) {}
+try {} catch ([e, ...a]) {}
+
+// binding-identifier.js
+for(let in 0);
+
+// object-binding.js
+var {a} = 0;
+var [{a = 0}] = 0;
+var [{__proto__:a, __proto__:b}] = 0;
+var {a, x: {y: a}} = 0;
+var a, {x: {y: a}} = 0;
+var {let, yield} = 0;
+(a, b, [c]) => 0
+try {} catch ({e}) {}
+try {} catch ({e = 0}) {}
+
+// literal-infinity-expression.js
+2e308
+
+// literal-null-expression.js
+null
+null;
+null\n
+
+// literal-numeric-expression.js
+0
+0;
+3
+5
+0
+.14
+6.
+0.
+3.14159
+6.02214179e+23
+1.492417830e-10
+0e+100 
+0e+100
+0x0
+0x0;
+0xabc
+0xdef
+0X1A
+0x10
+0x100
+0X04
+02
+012
+0012
+0.
+0b0
+0b1
+0b10
+0B0
+'use strict'; 0b0
+0o0
+(0o0)
+0o1
+0o10
+0O0
+09
+018
+'use strict'; 0o0
+
+// literal-regexp-expression.js
+/a/
+/\0/
+/\1/u
+/a/;
+/a/i
+/a/i;
+/[--]/
+/[a-z]/i
+/[x-z]/i
+/[a-c]/i
+/[P QR]/i
+/[\]/]/
+/foo\/bar/
+/=([^=\s])+/g
+/(()(?:\2)((\4)))/;
+/((((((((((((.))))))))))))\12/;
+/\.\/\\/u
+/\uD834\uDF06\u{1d306}/u
+/\uD834/u
+/\uDF06/u
+/[-a-]/
+/[-\-]/u
+/[-a-b-]/
+/[]/
+/0/g.test
+/{/;
+/}/;
+/}?/u;
+/{*/u;
+/{}/;
+/.{.}/;
+/[\w-\s]/;
+/[\s-\w]/;
+/(?=.)*/;
+/(?!.){0,}?/;
+/(?!.){0,}?/u
+
+// literal-string-expression.js
+('x')
+('\\\'')
+("x")
+("\\\"")
+('\r')
+('\r\\n')
+('\\n')
+('\u2028')
+('\u2029')
+('\u202a')
+('\0')
+'use strict'; ('\0')
+'use strict'; ('\0x')
+('\01')
+('\1')
+('\11')
+('\111')
+('\1111')
+('\2111')
+('\5111')
+('\5a')
+('\7a')
+('\a')
+('\`')
+('\u{00F8}')
+('\u{0}')
+('\u{10FFFF}')
+('\u{0000000000F8}')
+
+// array-expression.js
+[]
+[ ]
+[ 0 ]
+[ 0, ]
+[ ,, 0 ]
+[ 1, 2, 3, ]
+[ 1, 2,, 3, ]
+[,,1,,,2,3,,]
+[a, ...(b=c)]
+
+// arrow-expression.js
+(()=>0)
+() => 0
+(...a) => 0
+() => {}
+(a) => 0
+([a]) => 0
+a => 0
+({a}) => 0
+() => () => 0
+() => 0, 1
+() => 0 + 1
+(a,b) => 0 + 1
+(a,b,...c) => 0 + 1
+() => (a) = 0
+a => b => c => 0
+(x)=>{'use strict';}
+eval => 'use strict'
+'use strict';(x)=>0
+({x=0}, {})=>0
+([x=0], [])=>0
+(a, {x = 0})=>0
+({x = 0}, {y = 0}, {z = 0})=>0
+yield => 0
+
+// assignment-expression.js
+a=0;
+(a)=(0);
+x = 0
+eval = 0
+arguments = 0
+x *= 0
+x.x *= 0
+x /= 0
+x %= 0
+x += 0
+x -= 0
+x <<= 0
+x >>= 0
+x >>>= 0
+x &= 0
+x ^= 0
+x |= 0
+'use strict'; eval[0] = 0
+'use strict'; arguments[0] = 0
+((((((((((((((((((((((((((((((((((((((((a)))))))))))))))))))))))))))))))))))))))) = 0
+((((((((((((((((((((((((((((((((((((((((a.a)))))))))))))))))))))))))))))))))))))))) = 0
+[0].length = 0
+([0].length) = 0
+
+// binary-expression.js
+1+2;
+x & y
+x ^ y
+x | y
+x + y + z
+x - y + z
+x + y - z
+x - y - z
+x + y * z
+x + y / z
+x - y % z
+x * y * z
+x * y / z
+x * y % z
+x % y * z
+x << y << z
+x | y | z
+x & y & z
+x ^ y ^ z
+x & y | z
+x | y ^ z
+x | y & z
+x || y
+x && y
+x || y || z
+x && y && z
+x || y && z
+x || y ^ z
+x * y
+x / y
+x % y
+x + y
+x - y
+x << y
+x >> y
+x >>> y
+x < y
+x > y
+x <= y
+x >= y
+x in y
+x instanceof y
+x < y < z
+x == y
+x != y
+x === y
+x !== y
+
+// call-expression.js
+a(b,c)
+foo(bar, baz)
+(    foo  )()
+f(...a)
+f(...a = b)
+f(...a, ...b)
+f(a, ...b, c)
+f(...a, b, ...c)
+f(....0)
+f(.0)
+
+// class-expression.js
+(class {})
+(class A{})
+(class extends A {})
+(class A extends A {})
+(class {;;;\n;\n})
+(class {;;;\n;a(){}})
+(class {;;;\n;a(){}b(){}})
+(class {set a(b) {}})
+(class {get a() {}})
+(class {set a(b) {'use strict';}})
+(class {a(b) {'use strict';}})
+(class {prototype() {}})
+(class {a() {}})
+(class {3() {}})
+(class{[3+5](){}})
+(class extends (a,b) {})
+var x = class extends (a,b) {};
+(class {static(){}})
+(class {static constructor(){}})
+
+// computed-member-expression.js
+a[b, c]
+a[b]
+a[b] = b
+(a[b]||(c[d]=e))
+a&&(b=c)&&(d=e)
+
+// conditional-expression.js
+a?b:c
+y ? 1 : 2
+x && y ? 1 : 2
+x = (0) ? 1 : 2
+
+// function-expression.js
+(function(){})
+(function x() { y; z() });
+(function eval() { });
+(function arguments() { });
+(function x(y, z) { })
+(function(a = b){})
+(function(...a){})
+(function(a, ...b){})
+(function({a}){})
+(function({a: x, a: y}){})
+(function([a]){})
+(function({a = 0}){})
+label: !function(){ label:; };
+(function([]){})
+function* g(){ (function yield(){}); }
+(function*(){ (function yield(){}); })
+
+// grouped-expressions.js
+(a)
+(0)
+(0, a)
+(a, 0)
+(a,a)
+((a,a),(a,a))
+((((((((((((((((((((((((((((((((((((((((a))))))))))))))))))))))))))))))))))))))))
+
+// identifier-expression.js
+x
+x;
+await
+let
+let()
+(let[let])
+let.let
+for(let;;);
+for(let();;);
+for(let yield in 0);
+for(let.let in 0);
+日本語
+𐀀
+T‿
+T‌
+T‍
+ⅣⅡ
+ⅣⅡ 
+
+// new-expression.js
+new a(b,c)
+new Button
+new Button()
+new Button(a)
+new new foo
+new new foo()
+new f(...a)
+new f(...a = b)
+new f(...a, ...b)
+new f(a, ...b, c)
+new f(...a, b, ...c)
+
+// new-target-expression.js
+function f() { new.target; }
+function f(a = new.target){}
+(function f(a = new.target){})
+({ set m(a = new.target){} })
+({ m(a = new.target){} })
+({ get m(){ new.target } })
+function f() { new.\u0074arget; }
+function f() { new new.target; }
+function f() { new.target(); }
+function f() { new["target"]; }
+
+// object-expression.js
+({})
++{}
++{ }
+({ answer: 0 })
+({ if: 0 })
+({ true: 0 })
+({ false: 0 })
+({ null: 0 })
+({ "answer": 0 })
+({ x: 1, x: 2 })
+({ get width() { return m_width } })
+({ get undef() {} })
+({ get if() {} })
+({ get true() {} })
+({ get false() {} })
+({ get null() {} })
+({ get "undef"() {} })
+({ get 10() {} })
+({ set width(w) { w } })
+({ set if(w) { w } })
+({ set true(w) { w } })
+({ set false(w) { w } })
+({ set null(w) { w } })
+({ set "null"(w) { w } })
+({ set 10(w) { w } })
+({ get: 2 })
+({ set: 2 })
+({ __proto__: 2 })
+({"__proto__": 2 })
+({ get width() { return width }, set width(width) { return width; } })
+({a:0, get 'b'(){}, set 3(d){}})
+({a})
+({let})
+({yield})
+({a, b: 0, c})
+({a, b})
+({a(){}})
+({a(){let a;}})
+({a(b){}})
+({a(b,...c){}})
+({a(b,c){}})
+({a(b,c){let d;}})
+({set a(eval){}})
+({ set a([{b = 0}]){}, })
+({"<":0,"~":1})
+({"\"":0,"'":1})
+({a:0,"":1})
+({a:0,"\\":1})
+
+// static-member-expression.js
+a.b
+a.b.c
+a.$._.B0
+a.if
+a.true
+a.false
+a.null
+
+// super.js
+(class extends B { constructor() { super() } });
+class A extends B { constructor() { super() } }
+class A extends B { "constructor"() { super() } }
+class A extends B { constructor(a = super()){} }
+class A extends B { constructor() { ({a: super()}); } }
+class A extends B { constructor() { () => super(); } }
+class A extends B { constructor() { () => { super(); } } }
+({ a() { super.b(); } });
+({ *a() { super.b = 0; } });
+({ get a() { super[0] = 1; } });
+({ set a(x) { super.b[0] = 1; } });
+(class { constructor() { super.x } });
+class A extends B { constructor() { super.x } }
+class A { a() { () => super.b; } }
+class A { a() { new super.b; } }
+class A { a() { new super.b(); } }
+({ *f() { yield super.f(); } })
+
+// template-expression.js
+``
+`abc`
+`\n`
+`\r\\n\t\\n`
+`\``
+`$$$`
+`$$$${a}`
+`${a}`
+`${a}$`
+`${a}${b}`
+````
+``````
+a``
+a()``
+new a``
+new a()``
+
+// this-expression.js
+this
+
+// unary-expression.js
+!a
+!(a=b)
+typeof a
+void a
+delete a
++a
+~a
+-a
+
+// update-expression.js
+++a
+--a
+x++
+x--
+eval++
+eval--
+arguments++
+arguments--
+
+// yield-expression.js
+function*a(){yield\na}
+({set a(yield){}})
+function *a(){yield 0}
+function *a(){yield null}
+function *a(){yield true}
+function *a(){yield false}
+function *a(){yield "a"}
+function *a(){yield a}
+function *a(){yield+0}
+function *a(){yield-0}
+function *a(){yield 2e308}
+function *a(){yield(0)}
+function *a(){yield/a/}
+function *a(){yield/=3/}
+function *a(){yield class{}}
+function *a(){yield ++a;}
+function *a(){yield --a;}
+
+// yield-generator-expression.js
+function*a(){yield*a}
+function a(){yield*a}
+
+// grouping.js
+((((((((((((((((((((((((((((((((((((((((((((((((((0))))))))))))))))))))))))))))))))))))))))))))))))))
+(1 + 2 ) * 3
+(1) + (2  ) + 3
+4 + 5 << (6)
+(a) + (b)
+(a)
+((a))
+((a))()
+((a))((a))
+(a) = 0
+((a)) = 0
+void (a)
+(void a)
+(a++)
+(a)++
+(a)--
+(a) ? (b) : (c)
+
+// incompatibilities.js
+let[a] = b;
+const[a] = b;
+{ function f(){} }
+var yield = function yield(){};
+try {} catch(e) { var e = 0; }
+for(var x in [1,2]) 0
+for(let x in [1,2]) 0
+for(var x of [1,2]) 0
+for(let x of [1,2]) 0
+
+// interactions.js
+0 .toString
+0.0.toString
+0..toString
+01.toString
+(0).toString()
+a.b(b, c)
+a[b](b,c)
+new foo().bar()
+new foo[bar]
+new foo.bar()
+(new foo).bar()
+a[0].b
+a(0).b
+a(0).b(14, 3, 77).c
+a.b.c(2014)
+a || b && c | d ^ e & f == g < h >>> i + j * k
+if (x) { doThat() // Some comment\n }
+if (x) { // Some comment\ndoThat(); }
+if (x) { /* Some comment */ doThat() }
+if (x) { doThat() /* Some comment */ }
+switch (answer) { case 0: /* perfect */ bingo() }
+switch (answer) { case 0: bingo() /* perfect */ }
+/* header */ (function(){ var version = 1; }).call(this)
+(function(){ var version = 1; /* sync */ }).call(this)
+function f() { /* infinite */ while (true) { } /* bar */ var each; }
+while (i-->0) {}
+var x = 1<!--foo
+/* not comment*/; i-->0
+class A extends B { a() { [super.b] = c } }
+class A extends B { a() { ({b: super[c]}) = d } }
+
+// whitespace.js
+{ x\n++y }
+{ x\n--y }
+{ var x = 14, y = 3\nz; }
+while (true) { continue\nthere; }
+while (true) { continue // Comment\nthere; }
+while (true) { continue /* Multiline\nComment */there; }
+while (true) { break\nthere; }
+while (true) { break // Comment\nthere; }
+while (true) { break /* Multiline\nComment */there; }
+0 ;
+(function(){ return\nx; })
+(function(){ return // Comment\nx; })
+(function(){ return/* Multiline\nComment */x; })
+{ throw error\nerror; }
+{ throw error// Comment\nerror; }
+{ throw error/* Multiline\nComment */error; }
+throw /* \u202a */ e
+
+// export.js
+export * from "a"
+export * from "a"
+export {} from "a"
+export {a} from "a"
+export {a,} from "a"
+export {a,b} from "a"
+export {a as b} from "a"
+export {as as as} from "as"
+export {as as function} from "as"
+export {a} from "m"
+export {if as var} from "a";
+export {a}\n var a;
+export {a,}\n var a;
+export {a,b,}\n var a,b;
+export var a = 0, b;
+export const a = 0, b = 0;
+export let a = 0, b = 0;
+export let[a] = 0;
+export class A{} /* no semi */ false
+export function A(){} /* no semi */ false
+export default function (){} /* no semi */ false
+export default class {} /* no semi */ false
+export default 3 + 1
+export default a
+export default function a(){}
+export default class a{}
+export default function* a(){}
+export default 0;0
+export function f(){};0
+export class A{};0
+export {};0
+
+// import.js
+import * as a from 'a'
+import a from 'c'
+import a, {} from 'c'
+import {} from 'a'
+import a, * as b from 'a'
+import a, {b} from 'c'
+import a, {b as c} from 'c'
+import a, {function as c} from 'c'
+import a, {as} from 'c'
+import a, {as as c} from 'c'
+import {as as as} from 'as'
+import a, {b,} from 'c'
+import a, {b,c} from 'd'
+import a, {b,c,} from 'd'
+
+// generator-method.js
+({*a(){}})
+({*yield(){}})
+({*[yield](){}})
+
+// property-name.js
+({0x0:0})
+({2e308:0})
+({get b() {}})
+({set c(x) {}})
+({__proto__:0})
+({get __proto__() {}})
+({set __proto__(x) {}})
+({get __proto__() {}, set __proto__(x) {}})
+({["nUmBeR"+9]:"nein"})
+({[2*308]:0})
+({get [6+3]() {}, set [5/4](x) {}})
+({[6+3]() {}})
+({3() {}})
+({"moo"() {}})
+({"oink"(that, little, piggy) {}})
+
+// block-statement.js
+{ foo }
+{ doThis(); doThat(); }
+{}
+
+// break-statement.js
+while (true) { break }
+done: while (true) { break done }
+done: while (true) { break done; }
+__proto__: while (true) { break __proto__; }
+
+// continue-statement.js
+while (true) { continue; }
+while (true) { continue }
+done: while (true) { continue done }
+done: while (true) { continue done; }
+__proto__: while (true) { continue __proto__; }
+a: do continue a; while(1);
+a: while (0) { continue \n b; }
+a: while (0) { continue /*\n*/ b; }
+a: while (0) { continue /* */ b; }
+a: while (0) { continue /* */ b; }
+
+// debugger-statement.js
+debugger
+debugger;
+
+// do-while-statement.js
+do keep(); while (true);
+do continue; while(1);
+do ; while (true)
+do {} while (true)
+{do ; while(false); false}
+{do ; while(false) false}
+
+// empty-statement.js
+;
+
+// expression-statement.js
+x
+x, y
+\u0061
+a\u0061
+\u0061a
+\u0061a 
+
+// for-in-statement.js
+for(x in list) process(x);
+for (var x in list) process(x);
+for (let x in list) process(x);
+for(var a in b);
+for(a in b);
+for(a in b);
+for(a.b in c);
+for(let of in of);
+for(const a in b);
+
+// for-of-statement.js
+for (var x of list) process(x);
+for(var a of b);
+for(a of b);
+for(let [a] of b);
+for(let of of b);
+for(const a of b);
+
+// for-statement.js
+for(x, y;;);
+for(x = 0;;);
+for(var x = 0;;);
+for(let x = 0;;);
+for(var x = 0, y = 1;;);
+for(x; x < 0;);
+for(x; x < 0; x++);
+for(x; x < 0; x++) process(x);
+for(a;b;c);
+for(var a;b;c);
+for(var a = 0;b;c);
+for(var a = 0;;) { let a; }
+for(;b;c);
+for(let of;;);
+for(let a;;); let a;
+
+// if-statement.js
+if (morning) goodMorning()
+if (morning) (function(){})
+if (morning) var x = 0;
+if (morning) goodMorning(); else goodDay()
+if(a)b;
+if(a)b;else c;
+
+// labeled-statement.js
+start: for (;;) break start
+start: while (true) break start
+__proto__: test
+a:{break a;}
+
+// return-statement.js
+(function(){ return })
+(function(){ return; })
+(function(){ return x; })
+(function(){ return x * y })
+_ => { return 0; }
+
+// switch-statement.js
+switch (x) {}
+switch(a){case 1:}
+switch (answer) { case 0: hi(); break; }
+switch (answer) { case 0: let a; }
+
+// switch-with-default-statement.js
+switch(a){case 1:default:case 2:}
+switch(a){case 1:default:}
+switch(a){default:case 2:}
+switch (answer) { case 0: hi(); break; default: break }
+
+// throw-statement.js
+throw this
+throw x;
+throw x * y
+throw {}
+
+// try-catch-statement.js
+try{}catch(a){}
+try { } catch (e) { }
+try { } catch (e) { let a; }
+try { } catch (eval) { }
+try { } catch (arguments) { }
+try { } catch (e) { say(e) }
+try { doThat(); } catch (e) { say(e) }
+
+// try-finally-statement.js
+try { } finally { cleanup(stuff) }
+try{}catch(a){}finally{}
+try { doThat(); } catch (e) { say(e) } finally { cleanup(stuff) }
+
+// variable-declaration-statement.js
+var x
+var a;
+var x, y;
+var x = 0
+var eval = 0, arguments = 1
+var x = 0, y = 1, z = 2
+var implements, interface, package
+var private, protected, public
+var yield;
+var let
+let x
+{ let x }
+{ let x = 0 }
+{ let x = 0, y = 1, z = 2 }
+let x, x\u{E01D5}
+let xǕ, x\u{E01D5}
+let x\u01D5, x\u{E01D5}
+{ const x = 0 }
+{ const x = 0, y = 1, z = 2 }
+var static;
+(let[a])
+
+// while-statement.js
+while(1);
+while (true) doSomething()
+while (x < 10) { x++; y--; }
+
+// with-statement.js
+with(1);
+with (x) foo
+with (x) foo;
+with (x) { foo }
+
+// directive.js
+"Hello"
+"\u0061"
+"\x61"
+"Hello\\nworld"
+"Hello\02World"
+"Hello\012World"
+"Hello\122World"
+"Hello\0122World"
+"Hello\312World"
+"Hello\412World"
+"Hello\712World"
+"Hello\0World"
+"Hello\1World"
+(function () { 'use\x20strict'; with (i); })
+(function () { 'use\\nstrict'; with (i); })
+function a() {'use strict';return 0;};
+(function() {'use strict';return 0;});
+(function a() {'use strict';return 0;});
+"use strict" + 0

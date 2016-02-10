@@ -1,0 +1,48 @@
+{
+  "name": "shift-esotope",
+  "description": "ECMAScript code generator for the Shift AST",
+  "homepage": "http://github.com/vnmc/shift-esotope",
+  "main": "shift-esotope.js",
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "main": "src/shift-esotope.js",
+  "maintainers": [
+    {
+      "name": "Vanamco AG",
+      "email": "service@vanamco.com",
+      "web": "http://github.com/vnmc"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/vnmc/shift-esotope.git"
+  },
+  "devDependencies": {
+    "shift-parser": "4.1.0",
+    "shift-codegen": "4.0.3",
+    "should": "3.3.2",
+    "mocha": "2.2.5",
+    "benchmark": "~1.0.0"
+  },
+  "optionalDependencies": {
+    "microtime": "2.0.0"
+  },
+  "keywords": [
+    "Shift",
+    "AST",
+    "node",
+    "code generator"
+  ],
+  "licenses": [
+    {
+      "type": "BSD",
+      "url": "http://github.com/vnmc/shift-esotope/raw/master/LICENSE"
+    }
+  ],
+  "scripts": {
+    "test": "mocha --timeout 5000",
+    "benchmark": "node benchmark/index.js"
+  }
+}
