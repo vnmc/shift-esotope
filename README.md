@@ -23,9 +23,12 @@ Add [shift-esotope.js](https://raw.githubusercontent.com/vnmc/shift-esotope/mast
 ## Usage
 
 ```javascript
-var ShiftEsotope = require('shift-esotope'); // only needed for node.js; in the browser the global object ShiftEsotope will be added when including the script
+// only needed for node.js
+// in the browser the global object ShiftEsotope will be added when including the script
+var ShiftEsotope = require('shift-esotope'); 
 
-var ast = ...; // AST which you get, e.g., by parsing JavaScript code with the Shift Parser
+// AST which you get, e.g., by parsing JavaScript code with the Shift Parser
+var ast = ...;
 
 // creates JavaScript code (a string) from the AST
 var result = ShiftEsotope.generate(ast);
@@ -57,4 +60,4 @@ shift-esotope is x9.13 times faster vs shift-codegen.
 
 ## License
 
-[https://raw.githubusercontent.com/vnmc/shift-esotope/master/LICENSE](BSD)
+[BSD](https://raw.githubusercontent.com/vnmc/shift-esotope/master/LICENSE)
