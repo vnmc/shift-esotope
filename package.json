@@ -24,9 +24,7 @@
     "shift-codegen": "4.0.3",
     "should": "3.3.2",
     "mocha": "2.2.5",
-    "benchmark": "~1.0.0"
-  },
-  "optionalDependencies": {
+    "benchmark": "~1.0.0",
     "microtime": "2.0.0"
   },
   "keywords": [
