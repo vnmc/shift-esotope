@@ -2,12 +2,11 @@
   "name": "shift-esotope",
   "description": "ECMAScript code generator for the Shift AST",
   "homepage": "http://github.com/vnmc/shift-esotope",
-  "main": "shift-esotope.js",
-  "version": "1.0.0",
+  "main": "src/shift-esotope.js",
+  "version": "1.0.1",
   "engines": {
     "node": ">=0.10.0"
   },
-  "main": "src/shift-esotope.js",
   "maintainers": [
     {
       "name": "Vanamco AG",
