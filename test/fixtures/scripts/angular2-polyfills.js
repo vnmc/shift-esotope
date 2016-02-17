@@ -2366,7 +2366,7 @@ MERCHANTABLITY OR NON-INFRINGEMENT.
 See the Apache Version 2.0 License for specific language governing permissions
 and limitations under the License.
 ***************************************************************************** */
-"use strict";
+//"use strict";
 var Reflect;
 (function (Reflect) {
     // Load global or shim versions of Map, Set, and WeakMap

@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "shift-parser": "4.1.0",
+    "source-map": ">=0.5.3",
     "shift-codegen": "4.0.3",
     "should": "3.3.2",
     "mocha": "2.2.5",

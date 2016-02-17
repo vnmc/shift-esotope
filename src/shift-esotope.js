@@ -59,7 +59,8 @@ var isArray,
     safeConcatenation,
     directive,
     extra,
-    parse;
+    sourcemap,
+    filename;
 
 var Syntax = {
     ArrayBinding:                 'ArrayBinding',
@@ -209,9 +210,6 @@ function getDefaultOptions()
 {
     // default options
     return {
-        indent: null,
-        base: null,
-        parse: null,
         format: {
             indent: {
                 style: '    ',
@@ -230,8 +228,9 @@ function getDefaultOptions()
             safeConcatenation: false
         },
         directive: true,
-        raw: true,
-        verbatim: null
+        verbatim: null,
+        sourcemap: null,
+        filename: ''
     };
 }
 
@@ -386,7 +385,7 @@ function updateDeeply(target, override)
         {
             var val = override[key];
 
-            if (isHashObject(val))
+            if (key !== 'sourcemap' && isHashObject(val))
             {
                 if (isHashObject(target[key]))
                     updateDeeply(target[key], val);
@@ -541,7 +540,7 @@ function escapeString(str)
 }
 
 
-function join(l, r)
+function join(l, r, oldLine)
 {
     if (!l.length)
         return r;
@@ -556,11 +555,16 @@ function join(l, r)
         lCp === rCp && (lCp === 0x2B || lCp === 0x2D) || // + +, - -
         lCp === 0x2F && rCp === 0x69)                    // /re/ instanceof foo
     {
+        if (oldLine === undefined || oldLine === _.line)
+            _.col += _.spaceLength;
         return l + _.space + r;
     }
 
     if (isWhitespace(lCp) || isWhitespace(rCp))
         return l + r;
+
+    if (oldLine === undefined || oldLine === _.line)
+        _.col += _.optSpaceLength;
 
     return l + _.optSpace + r;
 }
@@ -574,19 +578,37 @@ function shiftIndent()
 
 function adoptionPrefix($stmt)
 {
-    if ($stmt.type === Syntax.BlockStatement || $stmt.type === Syntax.FunctionBody)
+    if ($stmt.type === Syntax.BlockStatement || $stmt.type === Syntax.Block || $stmt.type === Syntax.FunctionBody)
+    {
+        _.col += _.optSpaceLength;
         return _.optSpace;
+    }
 
     if ($stmt.type === Syntax.EmptyStatement)
         return '';
+
+    _.line += _.newlineNumLines;
+    if (_.newlineResetsCol)
+        _.col = _.newlineNumCols + _.indent.length + _.indentUnit.length;
+    else
+        _.col += _.newlineNumCols + _.indent.length + _.indentUnit.length;
 
     return _.newline + _.indent + _.indentUnit;
 }
 
 function adoptionSuffix($stmt)
 {
-    if ($stmt.type === Syntax.BlockStatement)
+    if ($stmt.type === Syntax.Block || $stmt.type === Syntax.BlockStatement)
+    {
+        _.col += _.optSpaceLength;
         return _.optSpace;
+    }
+
+    _.line += _.newlineNumLines;
+    if (_.newlineResetsCol)
+        _.col = _.newlineNumCols + _.indent.length;
+    else
+        _.col += _.newlineNumCols + _.indent.length;
 
     return _.newline + _.indent;
 }
@@ -603,15 +625,31 @@ function generateVerbatim($expr, settings)
         chunkCount = chunks.length;
 
     if (parenthesize)
+    {
         _.js += '(';
+        ++_.col;
+    }
 
     _.js += chunks[0];
+    _.col += chunks[0].length;
 
     for (var i = 1; i < chunkCount; ++i)
-        _.js += _.newline + _.indent + chunks[i];
+    {
+        var chunk = chunks[i];
+
+        _.js += _.newline + _.indent + chunk;
+        _.line += _.newlineNumLines;
+        if (_.newlineResetsCol)
+            _.col = _.newlineNumCols + _.indent.length + chunk.length;
+        else
+            _.col += _.newlineNumCols + _.indent.length + chunk.length;
+    }
 
     if (parenthesize)
+    {
         _.js += ')';
+        ++_.col;
+    }
 }
 
 function generateFunctionParams($node)
@@ -628,33 +666,46 @@ function generateFunctionParams($node)
     {
         // "arg => { ... }"
         _.js += $params[0].name;
+        _.col += $params[0].name.length;
     }
     else
     {
         _.js += '(';
+        ++_.col;
 
         for (var i = 0; i < paramCount; ++i)
         {
             var $param = $params[i];
 
             if ($param.type === Syntax.BindingIdentifier)
+            {
                 _.js += $param.name;
+                _.col += $param.name.length;
+            }
             else
                 ExprGen[$param.type]($param, Preset.e4);
 
             if (i !== lastParamIdx)
+            {
                 _.js += ',' + _.optSpace;
+                _.col += 1 + _.optSpaceLength;
+            }
         }
 
         if ($rest)
         {
             if (paramCount)
+            {
                 _.js += ',' + _.optSpace;
+                _.col += 1 + _.optSpaceLength;
+            }
 
             _.js += '...' + $rest.name;
+            _.col += 3 + $rest.name.length;
         }
 
         _.js += ')';
+        ++_.col;
     }
 }
 
@@ -663,18 +714,30 @@ function generateFunctionBody($node)
     var $body = $node.body;
 
     if ($node.type === Syntax.ArrowExpression)
+    {
         _.js += _.optSpace + '=>';
+        _.col += _.optSpaceLength + 2;
+    }
 
     if (ExprGen[$body.type])
     {
         _.js += _.optSpace;
+        _.col += _.optSpaceLength;
 
+        var oldLine = _.line;
         var exprJs = exprToJs($body, Preset.e4);
 
         if (exprJs.charAt(0) === '{')
-            exprJs = '(' + exprJs + ')';
+        {
+            _.js += '(' + exprJs + ')';
 
-        _.js += exprJs;
+            if (oldLine === _.line)
+                _.col += 2;
+            else
+                ++_.col;
+        }
+        else
+            _.js += exprJs;
     }
     else
     {
@@ -687,6 +750,22 @@ function generateFunction($node)
 {
     generateFunctionParams($node);
     generateFunctionBody($node);
+}
+
+function addMapping($stmt, name)
+{
+    sourcemap.addMapping({
+        generated: {
+            line: _.line + 1,
+            column: _.col
+        },
+        source: $stmt.loc.start.source || filename,
+        original: {
+            line: $stmt.loc.start.line,
+            column: $stmt.loc.start.column
+        },
+        name: name || ''
+    }, $stmt);
 }
 
 
@@ -1057,52 +1136,91 @@ function generateArrayPatternOrExpression($expr)
         var lastElemIdx = elemCount - 1,
             multiline = elemCount > 1 || $rest,
             prevIndent = shiftIndent(),
-            itemPrefix = _.newline + _.indent;
+            itemPrefix = _.newline + _.indent,
+            itemPrefixNewlineNumCol = _.newlineNumCols + _.indent.length;
 
         _.js += '[';
+        ++_.col;
 
         for (var i = 0; i < elemCount; ++i)
         {
             var $elem = $elems[i];
 
             if (multiline)
+            {
                 _.js += itemPrefix;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = itemPrefixNewlineNumCol;
+                else
+                    _.col += itemPrefixNewlineNumCol;
+            }
 
             if ($elem)
                 ExprGen[$elem.type]($elem, Preset.e4);
 
             if (i !== lastElemIdx || !$elem)
+            {
                 _.js += ',';
+                ++_.col;
+            }
         }
 
         if ($rest)
         {
             _.js += ',';
+            ++_.col;
             
             if (multiline)
+            {
                 _.js += itemPrefix;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = itemPrefixNewlineNumCol;
+                else
+                    _.col += itemPrefixNewlineNumCol;
+            }
             else
+            {
                 _.js += _.optSpace;
+                _.col += _.optSpaceLength;
+            }
 
             _.js += '...';
+            _.col += 3;
             ExprGen[$rest.type]($rest, Preset.e4);
         }
 
         _.indent = prevIndent;
 
         if (multiline)
+        {
             _.js += _.newline + _.indent;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = itemPrefixNewlineNumCol;
+            else
+                _.col += itemPrefixNewlineNumCol;
+        }
 
         _.js += ']';
+        ++_.col;
     }
     else if ($rest)
     {
         _.js += '[ ...';
+        _.col += 5;
+
         ExprGen[$rest.type]($rest, Preset.e4);
+        
         _.js += ']';
+        ++_.col;
     }
     else
+    {
         _.js += '[]';
+        _.col += 2;
+    }
 }
 
 
@@ -1117,14 +1235,21 @@ var ExprRawGen = {
             allowIn = settings.allowIn || parenthesize;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         ExprGen[$left.type]($left, Preset.e17(allowIn));
         _.js += _.optSpace + '=' + _.optSpace;
+        _.col += _.optSpaceLength + 1 + _.optSpaceLength;
         ExprGen[$right.type]($right, Preset.e18(allowIn));
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     CompoundAssignmentExpression: function generateCompoundAssignmentExpression($expr, settings)
@@ -1135,14 +1260,21 @@ var ExprRawGen = {
             allowIn = settings.allowIn || parenthesize;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         ExprGen[$left.type]($left, Preset.e17(allowIn));
         _.js += _.optSpace + $expr.operator + _.optSpace;
+        _.col += _.optSpaceLength + $expr.operator.length + _.optSpaceLength;
         ExprGen[$right.type]($right, Preset.e18(allowIn));
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     ArrowExpression: function generateArrowExpression($expr, settings)
@@ -1150,12 +1282,18 @@ var ExprRawGen = {
         var parenthesize = Precedence.ArrowFunction < settings.precedence;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         generateFunction($expr);
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     ConditionalExpression: function generateConditionalExpression($expr, settings)
@@ -1169,16 +1307,27 @@ var ExprRawGen = {
             branchGenSettings = Preset.e1(allowIn);
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         ExprGen[$test.type]($test, testGenSettings);
+
         _.js += _.optSpace + '?' + _.optSpace;
+        _.col += _.optSpaceLength + 1 + _.optSpaceLength;
+
         ExprGen[$conseq.type]($conseq, branchGenSettings);
         _.js += _.optSpace + ':' + _.optSpace;
+        _.col += _.optSpaceLength + 1 + _.optSpaceLength;
+
         ExprGen[$alt.type]($alt, branchGenSettings);
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     BinaryExpression: function generateBinaryExpression($expr, settings)
@@ -1187,38 +1336,54 @@ var ExprRawGen = {
             precedence = BinaryPrecedence[$expr.operator],
             parenthesize = precedence < settings.precedence,
             allowIn = settings.allowIn || parenthesize,
-            operandGenSettings = Preset.e16(precedence, allowIn),
-            exprJs = exprToJs($expr.left, operandGenSettings);
+            operandGenSettings = Preset.e16(precedence, allowIn);
 
         parenthesize |= op === 'in' && !allowIn;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
-        if (exprJs.charCodeAt(exprJs.length - 1) === 0x2F && isIdentifierCh(op.charCodeAt(0)))
+        ExprGen[$expr.left.type]($expr.left, operandGenSettings);
+        if (_.js.charCodeAt(_.js.length - 1) === 0x2F && isIdentifierCh(op.charCodeAt(0)))
         {
             // 0x2F = '/'
-            exprJs = exprJs + _.space + op;
+            _.js += _.space + op;
+            _.col += _.spaceLength + op.length;
         }
         else if (op === ',')
-            exprJs += ',';
+        {
+            _.js += ',';
+            ++_.col;
+        }
         else
-            exprJs = join(exprJs, op);
+        {
+            _.js = join(_.js, op);
+            _.col += op.length;
+        }
 
         operandGenSettings.precedence++;
 
-        var rightJs = exprToJs($expr.right, operandGenSettings);
+        var oldLine = _.line,
+            rightJs = exprToJs($expr.right, operandGenSettings);
 
         // NOTE: If '/' concats with '/' or `<` concats with `!--`, it is interpreted as comment start
         if (op === '/' && rightJs.charAt(0) === '/' || op.slice(-1) === '<' && rightJs.slice(0, 3) === '!--')
-            exprJs += _.space + rightJs;
+        {
+            _.js += _.space + rightJs;
+            if (oldLine === _.line)
+                _.col += _.spaceLength;
+        }
         else
-            exprJs = join(exprJs, rightJs);
-
-        _.js += exprJs;
+            _.js = join(_.js, rightJs, oldLine);
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     CallExpression: function generateCallExpression($expr, settings)
@@ -1230,10 +1395,14 @@ var ExprRawGen = {
             parenthesize = !settings.allowCall || Precedence.Call < settings.precedence;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         ExprGen[$callee.type]($callee, Preset.e3);
         _.js += '(';
+        ++_.col;
 
         for (var i = 0; i < argCount; ++i)
         {
@@ -1242,32 +1411,44 @@ var ExprRawGen = {
             ExprGen[$arg.type]($arg, Preset.e4);
 
             if (i !== lastArgIdx)
+            {
                 _.js += ',' + _.optSpace;
+                _.col += 1 + _.optSpaceLength;
+            }
         }
 
         _.js += ')';
+        ++_.col;
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     NewExpression: function generateNewExpression($expr, settings)
     {
-        var $args = $expr['arguments'],
+        var oldLine = _.line,
+            $args = $expr['arguments'],
             parenthesize = Precedence.New < settings.precedence,
             argCount = $args.length,
             lastArgIdx = argCount - 1,
-            withCall = !settings.allowUnparenthesizedNew || parentheses || argCount > 0,
-            calleeJs = exprToJs($expr.callee, Preset.e6(!withCall));
+            withCall = !settings.allowUnparenthesizedNew || parentheses || argCount > 0;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
-        _.js += join('new', calleeJs);
+        _.col += 3;
+        _.js += join('new', exprToJs($expr.callee, Preset.e6(!withCall)), oldLine);
 
         if (withCall)
         {
             _.js += '(';
+            ++_.col;
 
             for (var i = 0; i < argCount; ++i)
             {
@@ -1276,19 +1457,27 @@ var ExprRawGen = {
                 ExprGen[$arg.type]($arg, Preset.e4);
 
                 if (i !== lastArgIdx)
+                {
                     _.js += ',' + _.optSpace;
+                    _.col += 1 + _.optSpaceLength;
+                }
             }
 
             _.js += ')';
+            ++_.col;
         }
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     NewTargetExpression: function generateNewTargetExpression($expr, settings)
     {
         _.js += 'new.target';
+        _.col += 10;
     },
 
     StaticMemberExpression: function generateStaticMemberExpression($expr, settings)
@@ -1299,7 +1488,10 @@ var ExprRawGen = {
             isNumObj = $obj.type === Syntax.LiteralNumericExpression;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         if (isNumObj)
         {
@@ -1310,18 +1502,30 @@ var ExprRawGen = {
             //   4. Not hexadecimal OR octal number literal
             // then we should add a floating point.
 
-            var numJs = exprToJs($obj, Preset.e11(settings.allowCall)),
+            var oldLine = _.line,
+                numJs = exprToJs($obj, Preset.e11(settings.allowCall)),
                 withPoint = LAST_DECIMAL_DIGIT_REGEXP.test(numJs) && !FLOATING_OR_OCTAL_REGEXP.test(numJs);
 
-            _.js += withPoint ? (numJs + '.') : numJs;
+            if (withPoint)
+            {
+                _.js += numJs + '.';
+                if (oldLine === _.line)
+                    ++_.col;
+            }
+            else
+                _.js += numJs;
         }
         else
             ExprGen[$obj.type]($obj, Preset.e11(settings.allowCall));
 
         _.js += '.' + $prop;
+        _.col += 1 + $prop.length;
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     ComputedMemberExpression: function generateComputedMemberExpression($expr, settings)
@@ -1329,93 +1533,120 @@ var ExprRawGen = {
         var $obj = $expr.object,
             objType = $obj.type,
             $prop = $expr.expression,
-            parenthesize = Precedence.Member < settings.precedence ||
-                (objType === Syntax.IdentifierExpression && $obj.name === 'let');
+            parenthesize = Precedence.Member < settings.precedence || (objType === Syntax.IdentifierExpression && $obj.name === 'let');
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         ExprGen[objType]($obj, Preset.e11(settings.allowCall));
+
         _.js += '[';
+        ++_.col;
+
         ExprGen[$prop.type]($prop, Preset.e15(settings.allowCall));
+
         _.js += ']';
+        ++_.col;
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     UnaryExpression: function generateUnaryExpression($expr, settings)
     {
-        var parenthesize = Precedence.Unary < settings.precedence,
-            op = $expr.operator,
-            argJs = exprToJs($expr.operand, Preset.e7);
+        var oldLine = _.line,
+            parenthesize = Precedence.Unary < settings.precedence,
+            op = $expr.operator;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         // NOTE: delete, void, typeof
         // get `typeof []`, not `typeof[]`
         if (_.optSpace === '' || op.length > 2)
-            _.js += join(op, argJs);
+        {
+            _.col += op.length;
+            _.js += join(op, exprToJs($expr.operand, Preset.e7), oldLine);
+        }
         else
         {
             _.js += op;
+            _.col += op.length;
 
             // NOTE: Prevent inserting spaces between operator and operand if it is unnecessary, e.g., `!cond`
-            var leftCp = op.charCodeAt(op.length - 1),
+            var argJs = exprToJs($expr.operand, Preset.e7),
+                leftCp = op.charCodeAt(op.length - 1),
                 rightCp = argJs.charCodeAt(0);
 
             // 0x2B = '+', 0x2D =  '-'
             if (leftCp === rightCp && (leftCp === 0x2B || leftCp === 0x2D) || isIdentifierCh(leftCp) && isIdentifierCh(rightCp))
+            {
                 _.js += _.space;
+                if (oldLine === _.line)
+                    _.col += _.spaceLength;
+            }
 
             _.js += argJs;
         }
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     YieldExpression: function generateYieldExpression($expr, settings)
     {
-        var $arg = $expr.expression,
-            js = 'yield',
+        var oldLine = _.line,
+            $arg = $expr.expression,
             parenthesize = Precedence.Yield < settings.precedence;
 
         if (parenthesize)
-            _.js += '(';
-
-        if ($arg)
         {
-            var argJs = exprToJs($arg, Preset.e4);
-            js = join(js, argJs);
+            _.js += '(';
+            ++_.col;
         }
 
-        _.js += js;
+        _.col += 5;
+        _.js += $arg ? join('yield', exprToJs($arg, Preset.e4), oldLine) : 'yield';
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     YieldGeneratorExpression: function generateYieldGeneratorExpression($expr, settings)
     {
-        var $arg = $expr.expression,
-            js = 'yield*',
+        var oldLine = _.line,
+            $arg = $expr.expression,
             parenthesize = Precedence.Yield < settings.precedence;
 
         if (parenthesize)
-            _.js += '(';
-
-        if ($arg)
         {
-            var argJs = exprToJs($arg, Preset.e4);
-            js = join(js, argJs);
+            _.js += '(';
+            ++_.col;
         }
 
-        _.js += js;
+        _.col += 6;
+        _.js += $arg ? join('yield*', exprToJs($arg, Preset.e4), oldLine) : 'yield*';
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     UpdateExpression: function generateUpdateExpression($expr, settings)
@@ -1427,21 +1658,31 @@ var ExprRawGen = {
             parenthesize = precedence < settings.precedence;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         if (prefix)
         {
             _.js += $op;
+            _.col += $op.length;
+
             ExprGen[$arg.type]($arg, Preset.e8);
         }
         else
         {
             ExprGen[$arg.type]($arg, Preset.e8);
+
             _.js += $op;
+            _.col += $op.length;
         }
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     },
 
     FunctionExpression: function generateFunctionExpression($expr)
@@ -1453,11 +1694,14 @@ var ExprRawGen = {
 
         if ($name)
         {
-            _.js += isGenerator ? _.optSpace : _.space;
-            _.js += $name.name;
+            _.js += (isGenerator ? _.optSpace : _.space) + $name.name;
+            _.col += (isGenerator ? _.optSpaceLength : _.spaceLength) + $name.name.length;
         }
         else
+        {
             _.js += _.optSpace;
+            _.col += _.optSpaceLength;
+        }
 
         generateFunction($expr);
     },
@@ -1468,32 +1712,40 @@ var ExprRawGen = {
 
     ClassExpression: function generateClassExpression($expr)
     {
-        var $id = $expr.name,
+        var oldLine = _.line,
+            $id = $expr.name,
             $super = $expr.super,
             $elements = $expr.elements,
             elementCount = $elements.length,
             exprJs = 'class';
 
+        _.col += 5;
+
         if ($id)
         {
             var idJs = exprToJs($id, Preset.e9);
-            exprJs = join(exprJs, idJs);
+            exprJs = join(exprJs, idJs, oldLine);
         }
 
         if ($super)
         {
+            oldLine = _.line;
+            _.col += 7;
+
             var superJs = exprToJs($super, Preset.e4);
-            superJs = join('extends', superJs);
-            exprJs = join(exprJs, superJs);
+            superJs = join('extends', superJs, oldLine);
+            exprJs = join(exprJs, superJs, oldLine);
         }
 
         _.js += exprJs + _.optSpace;
+        _.col += _.optSpaceLength;
 
         if (elementCount)
         {
             var prevIndent = shiftIndent();
 
             _.js += '{';
+            ++_.col;
 
             for (var i = 0; i < elementCount; ++i)
             {
@@ -1501,31 +1753,58 @@ var ExprRawGen = {
                     elementType = $element.type || Syntax.ClassElement;
 
                 _.js += _.newline + _.indent;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols + _.indent.length;
+                else
+                    _.col += _.newlineNumCols + _.indent.length;
+
                 ExprGen[elementType]($element, Preset.e5);
             }
 
             _.indent = prevIndent;
             _.js += _.newline + _.indent + '}';
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col += _.newlineNumCols + _.indent.length + 1;
+            else
+                _.col += _.newlineNumCols + _.indent.length + 1;
         }
         else
+        {
             _.js += '{}';
+            _.col += 2;
+        }
     },
 
     ClassElement: function generateClassElement($expr)
     {
         var $method = $expr.method;
-        _.js += $expr.isStatic ? 'static' + _.optSpace : '';
+
+        if ($expr.isStatic)
+        {
+            _.js += 'static' + _.optSpace;
+            _.col += 6 + _.optSpaceLength;
+        }
+
         ExprGen[$method.type]($method);
     },
 
     Super: function generateSuper($expr)
     {
         _.js += 'super';
+        _.col += 5;
     },
 
     ComputedPropertyName: function generateComputedPropertyName($expr)
     {
-        _.js += '[' + exprToJs($expr.expression, Preset.e5) + ']';
+        _.js += '[';
+        ++_.col;
+
+        ExprGen[$expr.expression.type]($expr.expression, Preset.e5);
+
+        _.js += ']';
+        ++_.col;
     },
 
     StaticPropertyName: function generateStaticPropertyName($expr)
@@ -1536,54 +1815,79 @@ var ExprRawGen = {
             value = escapeString(value);
 
         _.js += value;
+        _.col += value.length;
     },
 
     Method: function generateMethod($expr)
     {
-        var keyJs = exprToJs($expr.name, Preset.e5);
+        if ($expr.isGenerator)
+        {
+            _.js += '*';
+            ++_.col;
+        }
 
-        _.js += $expr.isGenerator ? ('*' + keyJs) : keyJs;
+        ExprGen[$expr.name.type]($expr.name, Preset.e5);
+
         generateFunction($expr);
     },
 
     Getter: function generateGetter($expr)
     {
-        var keyJs = exprToJs($expr.name, Preset.e5);
+        _.js += 'get' + _.space;
+        _.col += 3 + _.spaceLength;
 
-        _.js += 'get' + _.space + keyJs + '()';
+        ExprGen[$expr.name.type]($expr.name, Preset.e5);
+
+        _.js += '()';
+        _.col += 2;
 
         generateFunctionBody($expr);
     },
 
     Setter: function generateSetter($expr)
     {
-        var $param = $expr.param,
-            keyJs = exprToJs($expr.name, Preset.e5);
+        var $name = $expr.name,
+            $param = $expr.param;
 
-        _.js += 'set' + _.space + keyJs + '(';
+        _.js += 'set' + _.space;
+        _.col += 3 + _.spaceLength;
+
+        ExprGen[$name.type]($name, Preset.e5);
+
+        _.js += '(';
+        ++_.col;
 
         if ($param.type === Syntax.BindingIdentifier)
+        {
             _.js += $param.name;
+            _.col += $param.name.length;
+        }
         else
             ExprGen[$param.type]($param, Preset.e4);
 
         _.js += ')';
+        ++_.col;
 
         generateFunctionBody($expr);
     },
 
     DataProperty: function generateDataProperty($expr)
     {
-        var $val = $expr.expression,
-            keyJs = exprToJs($expr.name, Preset.e5);
+        var $name = $expr.name,
+            $val = $expr.expression;
 
-        _.js += keyJs + ':' + _.optSpace;
+        ExprGen[$name.type]($name, Preset.e5);
+
+        _.js += ':' + _.optSpace;
+        _.col += 1 + _.optSpaceLength;
+
         ExprGen[$val.type]($val, Preset.e4);
     },
 
     ShorthandProperty: function generateShorthandProperty($expr)
     {
         _.js += $expr.name;
+        _.col += $expr.name.length;
     },
 
     ObjectExpression: function generateObjectExpression($expr)
@@ -1597,6 +1901,7 @@ var ExprRawGen = {
                 prevIndent  = shiftIndent();
 
             _.js += '{';
+            ++_.col;
 
             for (var i = 0; i < propCount; ++i)
             {
@@ -1604,17 +1909,34 @@ var ExprRawGen = {
                     propType = $prop.type || Syntax.DataProperty;
 
                 _.js += _.newline + _.indent;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols + _.indent.length;
+                else
+                    _.col += _.newlineNumCols + _.indent.length;
+
                 ExprGen[propType]($prop, Preset.e5);
 
                 if (i !== lastPropIdx)
+                {
                     _.js += ',';
+                    ++_.col;
+                }
             }
 
             _.indent = prevIndent;
             _.js += _.newline + _.indent + '}';
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols + _.indent.length + 1;
+            else
+                _.col += _.newlineNumCols + _.indent.length + 1;
         }
         else
+        {
             _.js += '{}';
+            _.col += 2;
+        }
     },
 
     ObjectBinding: function generateObjectBinding($expr)
@@ -1642,66 +1964,116 @@ var ExprRawGen = {
                 }
             }
 
-            _.js += multiline ? ('{' + _.newline) : '{';
+            if (multiline)
+            {
+                _.js += '{' + _.newline;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols;
+                else
+                    _.col += _.newlineNumCols;
+            }
+            else
+            {
+                _.js += '{';
+                ++_.col;
+            }
 
             var prevIndent = shiftIndent(),
-                propSuffix = ',' + (multiline ? _.newline : _.optSpace);
+                propSuffix = ',' + (multiline ? _.newline : _.optSpace),
+                propSuffixLineIncrement = multiline ? _.newlineNumLines : 0;
 
             for (var i = 0; i < propCount; ++i)
             {
                 var $prop = $props[i];
 
                 if (multiline)
+                {
                     _.js += _.indent;
+                    _.col += _.indent.length;
+                }
 
                 ExprGen[$prop.type]($prop, Preset.e5);
 
                 if (i !== lastPropIdx)
+                {
                     _.js += propSuffix;
+                    _.line += propSuffixLineIncrement;
+                    if (!multiline)
+                        _.col += _.optSpaceLength;
+                    else if (_.newlineResetsCol)
+                        _.col = 0;
+                }
             }
 
             _.indent = prevIndent;
-            _.js += multiline ? (_.newline + _.indent + '}') : '}';
+
+            if (multiline)
+            {
+                _.js += _.newline + _.indent + '}';
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols + _.indent.length + 1;
+                else
+                    _.col += _.newlineNumCols + _.indent.length + 1;
+            }
+            else
+            {
+                _.js += '}';
+                ++_.col;
+            }
         }
         else
+        {
             _.js += '{}';
+            _.col += 2;
+        }
     },
 
     ThisExpression: function generateThisExpression()
     {
         _.js += 'this';
+        _.col += 4;
     },
 
     IdentifierExpression: function generateIdentifierExpression($expr)
     {
         _.js += $expr.name;
+        _.col += $expr.name.length;
     },
 
     BindingIdentifier: function generateBindingIdentifier($expr)
     {
         _.js += $expr.name;
+        _.col += $expr.name.length;
     },
 
     BindingPropertyIdentifier: function generateBindingPropertyIdentifier($expr)
     {
-        var $init = $expr.init,
-            keyJs = exprToJs($expr.binding, Preset.e5);
+        var $binding = $expr.binding,
+            $init = $expr.init;
+
+        ExprGen[$binding.type]($binding, Preset.e5);
 
         if ($init)
         {
-            _.js += keyJs + '=' + _.optSpace;
+            _.js += '=' + _.optSpace;
+            _.col += 1 + _.optSpaceLength;
+
             ExprGen[$init.type]($init, Preset.e4);
         }
-        else
-            _.js += keyJs;
     },
 
     BindingPropertyProperty: function generateBindingPropertyProperty($expr)
     {
-        var $binding = $expr.binding,
-            keyJs = exprToJs($expr.name, Preset.e5);
+        var $name = $expr.name,
+            $binding = $expr.binding;
 
-        _.js += keyJs + ':' + _.optSpace;
+        ExprGen[$name.type]($name, Preset.e5);
+
+        _.js += ':' + _.optSpace;
+        _.col += 1 + _.optSpaceLength;
+
         ExprGen[$binding.type]($binding, Preset.e4);
     },
 
@@ -1711,7 +2083,10 @@ var ExprRawGen = {
             $right = $expr.init;
 
         ExprGen[$left.type]($left, Preset.e17);
+
         _.js += _.optSpace + '=' + _.optSpace;
+        _.col += _.optSpaceLength + 1 + _.optSpaceLength;
+
         ExprGen[$right.type]($right, Preset.e18);
     },
 
@@ -1720,9 +2095,15 @@ var ExprRawGen = {
         var $name = $expr.name;
 
         if ($name)
+        {
             _.js += $name + _.space + 'as' + _.space + $expr.exportedName;
+            _.col += $name.length + _.spaceLength + 2 + _.spaceLength + $expr.exportedName.length;
+        }
         else
+        {
             _.js += $expr.exportedName;
+            _.col += $expr.exportedName.length;
+        }
     },
 
     ImportSpecifier: function generateImportSpecifier($expr)
@@ -1730,14 +2111,21 @@ var ExprRawGen = {
         var $name = $expr.name;
 
         if ($name)
+        {
             _.js += $name + _.space + 'as' + _.space + $expr.binding.name;
+            _.col += $name.length + _.spaceLength + 2 + _.spaceLength + $expr.binding.name.length;
+        }
         else
+        {
             _.js += $expr.binding.name;
+            _.col += $expr.binding.name.length;
+        }
     },
 
     LiteralBooleanExpression: function generateBooleanLiteral($expr)
     {
         _.js += $expr.value ? 'true' : 'false';
+        _.col += $expr.value ? 4 : 5;
     },
 
     LiteralNumericExpression: function generateNumericLiteral($expr)
@@ -1752,6 +2140,7 @@ var ExprRawGen = {
         if (value === 1 / 0)
         {
             _.js += json ? 'null' : renumber ? '2e308' : '2e+308';
+            _.col += json ? 4 : renumber ? 5 : 6;
             return;
         }
 
@@ -1759,6 +2148,7 @@ var ExprRawGen = {
         if (!renumber || result.length < 3)
         {
             _.js += result;
+            _.col += result.length;
             return;
         }
 
@@ -1807,27 +2197,33 @@ var ExprRawGen = {
         }
 
         _.js += result;
+        _.col += result.length;
     },
 
     LiteralStringExpression: function generateStringLiteral($expr)
     {
-        _.js += escapeString($expr.value);
+        var s = escapeString($expr.value);
+        _.js += s;
+        _.col += s.length;
     },
 
     LiteralRegExpExpression: function generateRegExpLiteral($expr)
     {
         _.js += '/' + $expr.pattern + '/' + $expr.flags;
+        _.col += 2 + $expr.pattern.length + $expr.flags.length;
     },
 
     LiteralInfinityExpression: function generateInfinityLiteral($expr)
     {
         //_.js += 'Infinity';
         _.js += '2e308';
+        _.col += 5;
     },
 
     LiteralNullExpression: function generateNullLiteral($expr)
     {
         _.js += 'null';
+        _.col += 4;
     },
 
     SpreadElement: function generateSpreadElement($expr)
@@ -1835,6 +2231,8 @@ var ExprRawGen = {
         var $arg = $expr.expression;
 
         _.js += '...';
+        _.col += 3;
+
         ExprGen[$arg.type]($arg, Preset.e4);
     },
 
@@ -1846,31 +2244,46 @@ var ExprRawGen = {
             parenthesize = Precedence.TaggedTemplate < settings.precedence;
 
         if (parenthesize)
+        {
             _.js += '(';
+            ++_.col;
+        }
 
         if ($tag)
             ExprGen[$tag.type]($tag, Preset.e11(settings.allowCall));
 
         _.js += '`';
+        ++_.col;
 
         for (var i = 0; i < elementCount; ++i)
         {
             var $element = $elements[i];
 
             if ($element.type === Syntax.TemplateElement)
+            {
                 _.js += $element.rawValue;
+                _.col += $element.rawValue.length;
+            }
             else
             {
                 _.js += '${';
+                _.col += 2;
+
                 ExprGen[$element.type]($element, Preset.e5);
-                _.js += '}';                
+
+                _.js += '}';
+                ++_.col;
             }
         }
 
         _.js += '`';
+        ++_.col;
 
         if (parenthesize)
+        {
             _.js += ')';
+            ++_.col;
+        }
     }
 };
 
@@ -1886,30 +2299,40 @@ var EXPR_STMT_UNALLOWED_EXPR_REGEXP = /^{|^class(?:\s|{)|^function(?:\s|\*|\()/;
 
 function generateForStatementIterator($op, $stmt, settings)
 {
-    var $body = $stmt.body,
+    var oldLine = _.line,
+        $body = $stmt.body,
         $left = $stmt.left,
         bodySemicolonOptional = !semicolons && settings.semicolonOptional,
         prevIndent1 = shiftIndent(),
         stmtJs = 'for' + _.optSpace + '(';
 
+    if (sourcemap)
+        addMapping($stmt);
+
+    _.col += 4 + _.optSpaceLength;
+
     if ($left.type === Syntax.VariableDeclaration)
     {
         var prevIndent2 = shiftIndent();
 
+        _.col += $left.kind.length + _.spaceLength;
         stmtJs += $left.kind + _.space + stmtToJs($left.declarators[0], Preset.s6);
         _.indent = prevIndent2;
     }
     else
         stmtJs += exprToJs($left, Preset.e10);
 
-    stmtJs = join(stmtJs, $op);
+    _.col += $op.length;
+    stmtJs = join(stmtJs, $op, oldLine);
 
-    var rightJs = exprToJs($stmt.right, Preset.e5);
-    stmtJs = join(stmtJs, rightJs) + ')';
+    oldLine = _.line;
+    stmtJs = join(stmtJs, exprToJs($stmt.right, Preset.e5), oldLine) + ')';
+    ++_.col;
 
     _.indent = prevIndent1;
 
     _.js += stmtJs + adoptionPrefix($body);
+
     StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
 }
 
@@ -1924,31 +2347,55 @@ var StmtRawGen = {
             lastIdx = len - 1,
             prevIndent = shiftIndent();
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += '{' + _.newline;
+        _.line += _.newlineNumLines;
+        if (_.newlineResetsCol)
+            _.col = _.newlineNumCols;
+        else
+            _.col += _.newlineNumCols;
 
         // NOTE: extremely stupid solution for the T170848. We can't preserver all comments, because it's
         // ultra slow, but we make a trick: if we have a function body without content then we add
         // empty block comment into it. A lot of popular sites uses this ads library which fails if we don't
         // do that.
         if (settings.functionBody && !$body.length)
+        {
             _.js += '/**/';
+            _.col += 4;
+        }
 
         for (var i = 0; i < len; ++i)
         {
             var $item = $body[i];
 
             _.js += _.indent;
+            _.col += _.indent.length;
+
             StmtGen[$item.type]($item, Preset.s1(settings.functionBody, i === lastIdx));
+
             _.js += _.newline;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols;
+            else
+                _.co += _.newlineNumCols;
         }
 
         _.indent = prevIndent;
         _.js += _.indent + '}';
+        _.col += _.indent.length + 1;
     },
 
     BlockStatement: function generateBlockStatement($stmt, settings)
     {
         var $block = $stmt.block;
+
+        if (sourcemap)
+            addMapping($stmt);
+
         StmtGen[$block.type]($block, settings);
     },
 
@@ -1962,6 +2409,11 @@ var StmtRawGen = {
             prevIndent = shiftIndent();
 
         _.js += '{' + _.newline;
+        _.line += _.newlineNumLines;
+        if (_.newlineResetsCol)
+            _.col = _.newlineNumCols;
+        else
+            _.col += _.newlineNumCols;
 
         for (var i = 0; i < lenDirectives; ++i)
         {
@@ -1974,105 +2426,194 @@ var StmtRawGen = {
         // empty block comment into it. A lot of popular sites use this ads library which fails if we don't
         // do that.
         if (settings.functionBody && !$body.length)
+        {
             _.js += '/**/';
+            _.col += 4;
+        }
 
         for (var i = 0; i < len; ++i)
         {
             var $item = $body[i];
 
             _.js += _.indent;
+            _.col += _.indent.length;
+
             StmtGen[$item.type]($item, Preset.s1(settings.functionBody, i === lastIdx));
+
             _.js += _.newline;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols;
+            else
+                _.col += _.newlineNumCols;
         }
 
         _.indent = prevIndent;
         _.js += _.indent + '}';
+        _.col += _.indent.length + 1;
     },
 
     BreakStatement: function generateBreakStatement($stmt, settings)
     {
+        if (sourcemap)
+            addMapping($stmt);
+
         if ($stmt.label)
+        {
             _.js += 'break ' + $stmt.label;
+            _.col += 5 + $stmt.label.length;
+        }
         else
+        {
             _.js += 'break';
+            _.col += 5;
+        }
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     ContinueStatement: function generateContinueStatement($stmt, settings)
     {
+        if (sourcemap)
+            addMapping($stmt);
+
         if ($stmt.label)
+        {
             _.js += 'continue ' + $stmt.label;
+            _.col += 8 + $stmt.label.length;
+        }
         else
+        {
             _.js += 'continue';
+            _.col += 8;
+        }
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     ClassDeclaration: function generateClassDeclaration($stmt)
     {
-        var $elements = $stmt.elements,
+        var oldLine = _.line,
+            $elements = $stmt.elements,
             elementCount = $elements.length,
             lastElementIdx = elementCount - 1,
             $super = $stmt.super,
             prevIndent = shiftIndent(),
             name = $stmt.name.name,
-            js = 'class' + (name !== '*default*' ? (' ' + name) : '');
+            isNotDefault = name !== '*default*',
+            js = 'class' + (isNotDefault ? (' ' + name) : '');
+
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.col += 5;
+        if (isNotDefault)
+            _.col += name.length + 1;
 
         if ($super)
         {
+            _.col += _.spaceLength + 7;
             var superJs = exprToJs($super, Preset.e4);
-            js += _.space + join('extends', superJs);
+            js += _.space + join('extends', superJs, oldLine);
         }
 
         _.js += js + _.optSpace;
+        _.col += _.optSpaceLength;
 
         if (!elementCount)
+        {
             _.js += '{}';
+            _.col += 2;
+        }
         else
         {
             _.js += '{' + _.newline;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols;
+            else
+                _.col += _.newlineNumCols;
 
             for (var i = 0; i < elementCount; ++i)
             {
                 var $element = $elements[i];
 
                 _.js += _.indent;
+                _.col += _.indent.length;
+
                 ExprGen[$element.type]($element, Preset.s2);
 
                 if (i !== lastElementIdx)
+                {
                     _.js += _.newline;
+                    _.line += _.newlineNumLines;
+                    if (_.newlineResetsCol)
+                        _.col = _.newlineNumCols;
+                    else
+                        _.col += _.newlineNumCols;
+                }
             }
 
             _.indent = prevIndent;
             _.js += _.newline + _.indent + '}';
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols + _.indent.length + 1;
+            else
+                _.col += _.newlineNumCols + _.indent.length + 1;
         }
     },
 
     Directive: function generateDirective($stmt, settings)
     {
-        _.js += escapeDirective($stmt.rawValue);
+        var directive = escapeDirective($stmt.rawValue);
+
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.js += directive;
+        _.col += directive.length;
+
         if (semicolons || !settings.semicolonOptional)
-            _.js += ';';        
+        {
+            _.js += ';';
+            ++_.col;
+        }
     },
 
     DoWhileStatement: function generateDoWhileStatement($stmt, settings)
     {
-        var $body = $stmt.body,
-            $test = $stmt.test,
-            bodyJs = adoptionPrefix($body) + stmtToJs($body, Preset.s7) + adoptionSuffix($body);
+        var oldLine = _.line,
+            $body = $stmt.body,
+            $test = $stmt.test;
+
+        if (sourcemap)
+            addMapping($stmt);
 
         // NOTE: Because `do 42 while (cond)` is Syntax Error. We need semicolon.
-        var stmtJs = join('do', bodyJs);
-
+        _.col += 2;
+        var stmtJs = join('do', adoptionPrefix($body) + stmtToJs($body, Preset.s7) + adoptionSuffix($body), oldLine);
         _.js += join(stmtJs, 'while' + _.optSpace + '(');
+        _.col += 6 + _.optSpaceLength;
+
         ExprGen[$test.type]($test, Preset.e5);
+
         _.js += ')';
+        ++_.col;
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     CatchClause: function generateCatchClause($stmt)
@@ -2081,133 +2622,239 @@ var StmtRawGen = {
             $body = $stmt.body,
             prevIndent = shiftIndent();
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'catch' + _.optSpace + '(';
+        _.col += 6 + _.optSpaceLength;
+
         ExprGen[$param.type]($param, Preset.e5);
 
         _.indent = prevIndent;
+
+        ++_.col;
         _.js += ')' + adoptionPrefix($body);
+
         StmtGen[$body.type]($body, Preset.s7);
     },
 
     DebuggerStatement: function generateDebuggerStatement($stmt, settings)
     {
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'debugger';
+        _.col += 8;
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     EmptyStatement: function generateEmptyStatement()
     {
         _.js += ';';
+        ++_.col;
     },
 
     Export: function generateExport($stmt, settings)
     {
-        _.js += join('export', stmtToJs($stmt.declaration, Preset.s4(!semicolons && settings.semicolonOptional)));
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.js += 'export ';
+        _.col += 7;
+
+        StmtGen[$stmt.declaration.type]($stmt.declaration, Preset.s4(!semicolons && settings.semicolonOptional));
     },
 
     ExportAllFrom: function generateExportAllFrom($stmt, settings)
     {
-        _.js += 'export * from ' + escapeString($stmt.moduleSpecifier);
+        if (sourcemap)
+            addMapping($stmt);
+
+        var js = 'export * from ' + escapeString($stmt.moduleSpecifier);
+        _.js += js;
+        _.col += js.length;
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     ExportDefault: function generateExportDefault($stmt, settings)
     {
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.js += 'export default ';
+        _.col += 15;
+
         var $body = $stmt.body;
 
         if (ExprGen[$body.type])
-            _.js += join('export default', exprToJs($body, Preset.e4));
+            ExprGen[$body.type]($body, Preset.e4);
         else
-            _.js += join('export default', stmtToJs($body, Preset.s4));
+            StmtGen[$body.type]($body, Preset.s2);
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     ExportFrom: function generateExportFrom($stmt, settings)
     {
         var $exports = $stmt.namedExports,
             $moduleSpec = $stmt.moduleSpecifier,
-            exportCount = $exports.length,
-            stmtJs = 'export';
+            exportCount = $exports.length;
+
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.js += 'export';
+        _.col += 6;
 
         if (exportCount)
         {
             var prevIndent = shiftIndent(),
                 lastExportIdx = exportCount - 1;
 
-            stmtJs += _.optSpace + '{';
+            _.js += _.optSpace + '{';
+            _.col += _.optSpaceLength + 1;
 
             for (var i = 0; i < exportCount; ++i)
             {
-                stmtJs += _.newline + _.indent;
-                stmtJs += exprToJs($exports[i], Preset.e5);
+                _.js += _.newline + _.indent;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols + _.indent.length;
+                else
+                    _.col += _.newlineNumCols + _.indent.length;
+
+                ExprGen[$exports[i].type]($exports[i], Preset.e5);
 
                 if (i !== lastExportIdx)
-                    stmtJs += ',';
+                {
+                    _.js += ',';
+                    ++_.col;
+                }
             }
 
             _.indent = prevIndent;
-            stmtJs += _.newline + _.indent + '}';
+            
+            _.js += _.newline + _.indent + '}';
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols + _.indent.length + 1;
+            else
+                _.col += _.newlineNumCols + _.indent.length + 1;
         }
         else
-            stmtJs += _.optSpace + '{}';
+        {
+            _.js += _.optSpace + '{}';
+            _.col += _.optSpaceLength + 2;
+        }
 
         if ($moduleSpec)
-            _.js += join(stmtJs, 'from' + _.optSpace + escapeString($moduleSpec));
-        else
-            _.js += stmtJs;
+        {
+            var moduleSpec = escapeString($moduleSpec);
+            _.js += _.space + 'from' + _.optSpace + moduleSpec;
+            _.col += _.spaceLength + 4 + _.optSpaceLength + moduleSpec.length;
+        }
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     ExpressionStatement: function generateExpressionStatement($stmt, settings)
     {
-        var exprJs = exprToJs($stmt.expression, Preset.e5),
+        if (sourcemap)
+            addMapping($stmt);
+
+        var oldLine = _.line,
+            exprJs = exprToJs($stmt.expression, Preset.e5),
             type = $stmt.expression.type,
             parenthesize = EXPR_STMT_UNALLOWED_EXPR_REGEXP.test(exprJs) ||
                 (directive && settings.directiveContext &&
                 (type === Syntax.LiteralBooleanExpression || type === Syntax.LiteralNullExpression || type === Syntax.LiteralNumericExpression || type === Syntax.LiteralRegExpExpression || type === Syntax.LiteralStringExpression)
                 && typeof $stmt.expression.value === 'string');
 
+
         // NOTE: '{', 'function', 'class' are not allowed in expression statement.
         // Therefore, they should be parenthesized.
         if (parenthesize)
+        {
             _.js += '(' + exprJs + ')';
+
+            if (oldLine === _.line)
+                _.col += 2;
+            else
+            {
+                // expr spans more than one line: increment only for closing bracket
+                ++_.col;
+            }
+        }
         else
             _.js += exprJs;
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     Import: function generateImport($stmt, settings)
     {
         var $defaultBinding = $stmt.defaultBinding,
             $namedImports = $stmt.namedImports,
-            namedImportCount = $namedImports.length,
-            stmtJs = 'import';
+            namedImportCount = $namedImports.length;
+
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.js += 'import';
+        _.col += 6;
 
         if ($defaultBinding)
-            stmtJs = join(stmtJs, $defaultBinding.name);
+        {
+            _.js += _.space + $defaultBinding.name;
+            _.col += _.spaceLength + $defaultBinding.name.length;
+        }
 
         if (namedImportCount)
         {
             var lastSpecIdx = namedImportCount - 1;
 
             if ($defaultBinding)
-                stmtJs += ',';
+            {
+                _.js += ',';
+                ++_.col;
+            }
 
-            stmtJs += _.optSpace + '{';
+            _.js += _.optSpace + '{';
+            _.col += _.optSpaceLength + 1;
 
             // import { ... } from "...";
             if (namedImportCount === 1)
-                stmtJs += _.optSpace + exprToJs($namedImports[0], Preset.e5) + _.optSpace;
+            {
+                _.js += _.optSpace;
+                _.col += _.optSpaceLength;
+
+                ExprGen[$namedImports[0].type]($namedImports[0], Preset.e5);
+
+                _.js += _.optSpace;
+                _.col += _.optSpaceLength;
+            }
             else
             {
                 var prevIndent = shiftIndent();
@@ -2216,46 +2863,82 @@ var StmtRawGen = {
                 //    ...,
                 //    ...,
                 // } from "...";
+
                 for (var i = 0; i < namedImportCount; ++i)
                 {
-                    stmtJs += _.newline + _.indent + exprToJs($namedImports[i], Preset.e5);
+                    _.js += _.newline + _.indent;
+                    _.line += _.newlineNumLines;
+                    if (_.newlineResetsCol)
+                        _.col = _.newlineNumCols + _.indent.length;
+                    else
+                        _.col += _.newlineNumCols + _.indent.length;
+
+                    ExprGen[$namedImports[i].type]($namedImports[i], Preset.e5);
 
                     if (i !== lastSpecIdx)
-                        stmtJs += ',';
+                    {
+                        _.js += ',';
+                        ++_.col;
+                    }
                 }
 
                 _.indent = prevIndent;
-                stmtJs += _.newline + _.indent;
+
+                _.js += _.newline + _.indent;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols + _.indent.length;
+                else
+                    _.col += _.newlineNumCols + _.indent.length;
             }
 
-            stmtJs += '}' + _.optSpace;
+            _.js += '}';
+            ++_.col;
         }
 
         if ($defaultBinding || namedImportCount)
-            stmtJs = join(stmtJs, 'from');
+        {
+            _.js += _.optSpace + 'from';
+            _.col += _.optSpaceLength + 4;
+        }
 
-        _.js += stmtJs + _.optSpace + escapeString($stmt.moduleSpecifier);
+        var moduleSpec = escapeString($stmt.moduleSpecifier);
+        _.js += _.space + moduleSpec;
+        _.col += _.spaceLength + moduleSpec.length;
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     ImportNamespace: function generateImportNamespace($stmt, settings)
     {
         var $defaultBinding = $stmt.defaultBinding,
-            $namespaceBinding = $stmt.namespaceBinding,
-            stmtJs = 'import';
+            $namespaceBinding = $stmt.namespaceBinding;
+
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.js += 'import';
+        _.col += 6;
 
         if ($defaultBinding)
-            stmtJs = join(stmtJs, $defaultBinding.name + ',' + _.optSpace);
+        {
+            _.js += _.space + $defaultBinding.name + ',' + _.optSpace;
+            _.col += _.spaceLength + $defaultBinding.name.length + 1 + _.optSpaceLength;
+        }
 
-        stmtJs += '*' + _.optSpace + 'as';
-        stmtJs = join(stmtJs, $namespaceBinding.name);
-        stmtJs = join(stmtJs, 'from');
-        _.js += stmtJs + _.optSpace + escapeString($stmt.moduleSpecifier);
+        var moduleSpec = escapeString($stmt.moduleSpecifier);
+        _.js += '*' + _.optSpace + 'as' + _.space + $namespaceBinding.name + _.space + 'from' + _.space + moduleSpec;
+        _.col += 7 + _.optSpaceLength + 3 * _.spaceLength + $namespaceBinding.name.length + moduleSpec.length;
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     VariableDeclarator: function generateVariableDeclarator($stmt, settings)
@@ -2267,13 +2950,19 @@ var StmtRawGen = {
         if ($init)
         {
             ExprGen[$binding.type]($binding, genSettings);
+
             _.js += _.optSpace + '=' + _.optSpace;
+            _.col += _.optSpaceLength + 1 + _.optSpaceLength;
+
             ExprGen[$init.type]($init, genSettings);
         }
         else
         {
             if ($binding.type === Syntax.BindingIdentifier)
+            {
                 _.js += $binding.name;
+                _.col += $binding.name.length;
+            }
             else
                 ExprGen[$binding.type]($binding, genSettings);
         }
@@ -2286,18 +2975,27 @@ var StmtRawGen = {
             prevIndent = len > 1 ? shiftIndent() : _.indent,
             declGenSettings = Preset.s3(settings.allowIn);
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += $stmt.kind;
+        _.col += $stmt.kind.length;
 
         for (var i = 0; i < len; ++i)
         {
             var $decl = $decls[i];
 
             _.js += i === 0 ? _.space : (',' + _.optSpace);
+            _.col += i === 0 ? _.spaceLength : (1 + _.optSpaceLength);
+
             StmtGen[$decl.type]($decl, declGenSettings);
         }
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
 
         _.indent = prevIndent;
     },
@@ -2305,41 +3003,69 @@ var StmtRawGen = {
     VariableDeclarationStatement: function generateVariableDeclarationStatement($stmt, settings)
     {
         var $decl = $stmt.declaration;
+
+        if (sourcemap)
+            addMapping($stmt);
+
         StmtGen[$decl.type]($decl, settings);
     },
 
     ThrowStatement: function generateThrowStatement($stmt, settings)
     {
-        var argJs = exprToJs($stmt.expression, Preset.e5);
+        if (sourcemap)
+            addMapping($stmt);
 
-        _.js += join('throw', argJs);
+        var oldLine = _.line;
+
+        _.col += 5;
+        _.js += join('throw', exprToJs($stmt.expression, Preset.e5), oldLine);
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     TryCatchStatement: function generateTryCatchStatement($stmt)
     {
-        var $block = $stmt.body,
-            stmtJs = 'try' + adoptionPrefix($block) + stmtToJs($block, Preset.s7) + adoptionSuffix($block);
+        var oldLine = _.line,
+            $block = $stmt.body;
 
-        _.js += join(stmtJs, stmtToJs($stmt.catchClause, Preset.s7));
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.col += 3;
+        _.js += join(
+            'try' + adoptionPrefix($block) + stmtToJs($block, Preset.s7) + adoptionSuffix($block),
+            stmtToJs($stmt.catchClause, Preset.s7),
+            oldLine
+        );
     },
 
     TryFinallyStatement: function generateTryFinallyStatement($stmt)
     {
-        var $block = $stmt.body,
+        var oldLine,
+            $block = $stmt.body,
             $catchClause = $stmt.catchClause,
-            $finalizer = $stmt.finalizer,
-            stmtJs = 'try' + adoptionPrefix($block) + stmtToJs($block, Preset.s7) + adoptionSuffix($block);
+            $finalizer = $stmt.finalizer;
+
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.col += 3;
+        var stmtJs = 'try' + adoptionPrefix($block) + stmtToJs($block, Preset.s7) + adoptionSuffix($block);
 
         if ($catchClause)
         {
-            stmtJs = join(stmtJs, stmtToJs($catchClause, Preset.s7));
+            oldLine = _.line;
+            stmtJs = join(stmtJs, stmtToJs($catchClause, Preset.s7), oldLine);
             stmtJs += adoptionSuffix($catchClause.body);
         }
 
-        stmtJs = join(stmtJs, 'finally' + adoptionPrefix($finalizer));
+        oldLine = _.line;
+        _.col += 7;
+        stmtJs = join(stmtJs, 'finally' + adoptionPrefix($finalizer), oldLine);
         stmtJs += stmtToJs($finalizer, Preset.s7);
 
         _.js += stmtJs;
@@ -2351,9 +3077,21 @@ var StmtRawGen = {
             $cases = $stmt.cases,
             prevIndent = shiftIndent();
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'switch' + _.optSpace + '(';
+        _.col += 7 + _.optSpaceLength;
+
         ExprGen[$discr.type]($discr, Preset.e5);
+
         _.js += ')' + _.optSpace + '{' + _.newline;
+        _.line += _.newlineNumLines;
+        if (_.newlineResetsCol)
+            _.col = _.newlineNumCols;
+        else
+            _.col += 2 + _.optSpaceLength + _.newlineNumCols;
+
         _.indent = prevIndent;
 
         if ($cases)
@@ -2366,8 +3104,16 @@ var StmtRawGen = {
                 var $case = $cases[i];
 
                 _.js += _.indent;
+                _.col += _.indent.length;
+
                 StmtGen[$case.type]($case, Preset.s4(i === lastCaseIdx));
+
                 _.js += _.newline;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols;
+                else
+                    _.col += _.newlineNumCols;
             }
         }
 
@@ -2382,9 +3128,21 @@ var StmtRawGen = {
             $postDefaultCases = $stmt.postDefaultCases,
             prevIndent = shiftIndent();
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'switch' + _.optSpace + '(';
+        _.col += 7 + _.optSpaceLength;
+
         ExprGen[$discr.type]($discr, Preset.e5);
+
         _.js += ')' + _.optSpace + '{' + _.newline;
+        _.line += _.newlineNumLines;
+        if (_.newlineResetsCol)
+            _.col = _.newlineNumCols;
+        else
+            _.col += 2 + _.optSpaceLength + _.newlineNumCols;
+
         _.indent = prevIndent;
 
         // pre-default cases
@@ -2397,15 +3155,31 @@ var StmtRawGen = {
                 var $case = $preDefaultCases[i];
 
                 _.js += _.indent;
+                _.col += _.indent.length;
+
                 StmtGen[$case.type]($case, Preset.s4);
+
                 _.js += _.newline;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols;
+                else
+                    _.col += _.newlineNumCols;
             }
         }
 
         // default case
         _.js += _.indent;
+        _.col += _.indent.length;
+
         StmtGen[$defaultCase.type]($defaultCase, Preset.s4(!$postDefaultCases));
+
         _.js += _.newline;
+        _.line += _.newlineNumLines;
+        if (_.newlineResetsCol)
+            _.col = _.newlineNumCols;
+        else
+            _.col += _.newlineNumCols;
 
         // post-default cases
         if ($postDefaultCases)
@@ -2418,17 +3192,27 @@ var StmtRawGen = {
                 var $case = $postDefaultCases[i];
 
                 _.js += _.indent;
+                _.col += _.indent.length;
+
                 StmtGen[$case.type]($case, Preset.s4(i === lastCaseIdx));
+
                 _.js += _.newline;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols;
+                else
+                    _.col += _.newlineNumCols;
             }
         }
 
         _.js += _.indent + '}';
+        _.col += _.indent.length + 1;
     },
 
     SwitchCase: function generateSwitchCase($stmt, settings)
     {
-        var $conseqs = $stmt.consequent,
+        var oldLine = _.line,
+            $conseqs = $stmt.consequent,
             $firstConseq = $conseqs[0],
             $test = $stmt.test,
             i = 0,
@@ -2437,8 +3221,12 @@ var StmtRawGen = {
             lastConseqIdx = conseqCount - 1,
             prevIndent = shiftIndent();
 
-        var testJs = exprToJs($test, Preset.e5);
-        _.js += join('case', testJs) + ':';
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.col += 4;
+        _.js += join('case', exprToJs($test, Preset.e5), oldLine) + ':';
+        ++_.col;
 
         if (conseqCount && $firstConseq.type === Syntax.BlockStatement)
         {
@@ -2453,6 +3241,12 @@ var StmtRawGen = {
                 semicolonOptional = i === lastConseqIdx && conseqSemicolonOptional;
 
             _.js += _.newline + _.indent;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols + _.indent.length;
+            else
+                _.col += _.newlineNumCols + _.indent.length;
+
             StmtGen[$conseq.type]($conseq, Preset.s4(semicolonOptional));
         }
 
@@ -2469,7 +3263,11 @@ var StmtRawGen = {
             lastConseqIdx = conseqCount - 1,
             prevIndent = shiftIndent();
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'default:';
+        _.col += 8;
 
         if (conseqCount && $firstConseq.type === Syntax.BlockStatement)
         {
@@ -2484,6 +3282,12 @@ var StmtRawGen = {
                 semicolonOptional = i === lastConseqIdx && conseqSemicolonOptional;
 
             _.js += _.newline + _.indent;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols + _.indent.length;
+            else
+                _.col += _.newlineNumCols + _.indent.length;
+
             StmtGen[$conseq.type]($conseq, Preset.s4(semicolonOptional));
         }
 
@@ -2497,23 +3301,44 @@ var StmtRawGen = {
             prevIndent = shiftIndent(),
             semicolonOptional = !semicolons && settings.semicolonOptional;
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'if' + _.optSpace + '(';
+        _.col += 3 + _.optSpaceLength;
+
         ExprGen[$test.type]($test, Preset.e5);
+
         _.js += ')';
+        ++_.col;
+
         _.indent = prevIndent;
         _.js += adoptionPrefix($conseq);
 
         if ($stmt.alternate)
         {
-            var conseq = stmtToJs($conseq, Preset.s7) + adoptionSuffix($conseq),
-                alt = stmtToJs($stmt.alternate, Preset.s4(semicolonOptional));
+            var oldLine1 = _.line,
+                conseq = stmtToJs($conseq, Preset.s7) + adoptionSuffix($conseq),
+                alt;
 
             if ($stmt.alternate.type === Syntax.IfStatement)
-                alt = 'else ' + alt;
+            {
+                _.col += 5;
+                alt = 'else ' + stmtToJs($stmt.alternate, Preset.s4(semicolonOptional));
+            }
             else
-                alt = join('else', adoptionPrefix($stmt.alternate) + alt);
+            {
+                var oldLine2 = _.line;
+                _.col += 4;
 
-            _.js += join(conseq, alt);
+                alt = join(
+                    'else',
+                    adoptionPrefix($stmt.alternate) + stmtToJs($stmt.alternate, Preset.s4(semicolonOptional)),
+                    oldLine2
+                );
+            }
+
+            _.js += join(conseq, alt, oldLine1);
         }
         else
             StmtGen[$conseq.type]($conseq, Preset.s4(semicolonOptional));
@@ -2528,7 +3353,11 @@ var StmtRawGen = {
             bodySemicolonOptional = !semicolons && settings.semicolonOptional,
             prevIndent = shiftIndent();
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'for' + _.optSpace + '(';
+        _.col += 4 + _.optSpaceLength;
 
         if ($init)
         {
@@ -2537,29 +3366,42 @@ var StmtRawGen = {
             else
             {
                 ExprGen[$init.type]($init, Preset.e14);
+
                 _.js += ';';
+                ++_.col;
             }
         }
         else
+        {
             _.js += ';';
+            ++_.col;
+        }
 
         if ($test)
         {
             _.js += _.optSpace;
+            _.col += _.optSpaceLength;
+
             ExprGen[$test.type]($test, Preset.e5);
         }
 
         _.js += ';';
+        ++_.col;
 
         if ($update)
         {
             _.js += _.optSpace;
+            _.col += _.optSpaceLength;
+
             ExprGen[$update.type]($update, Preset.e5);
         }
 
         _.js += ')';
+        ++_.col;
+
         _.indent = prevIndent;
         _.js += adoptionPrefix($body);
+
         StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
     },
 
@@ -2579,12 +3421,17 @@ var StmtRawGen = {
             bodySemicolonOptional = !semicolons && settings.semicolonOptional,
             prevIndent = _.indent;
 
+        if (sourcemap)
+            addMapping($stmt);
+
+        _.col += $stmt.label.length + 1;
         _.js += $stmt.label + ':' + adoptionPrefix($body);
 
         if ($body.type !== Syntax.BlockStatement)
             prevIndent = shiftIndent();
 
         StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
+
         _.indent = prevIndent;
     },
 
@@ -2597,7 +3444,11 @@ var StmtRawGen = {
             lastIdx = len - 1;
 
         if (safeConcatenation && (len > 0 || lenDirectives > 0))
+        {
             _.js += '\n';
+            ++_.line;
+            _.col = 0;
+        }
 
         for (var i = 0; i < lenDirectives; ++i)
         {
@@ -2610,10 +3461,19 @@ var StmtRawGen = {
             var $item = $items[i];
 
             _.js += _.indent;
+            _.col += _.indent.length;
+
             StmtGen[$item.type]($item, Preset.s5(!safeConcatenation && i === lastIdx));
 
             if (i !== lastIdx)
+            {
                 _.js += _.newline;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols;
+                else
+                    _.col += _.newlineNumCols;
+            }
         }
     },    
 
@@ -2626,7 +3486,11 @@ var StmtRawGen = {
             lastIdx = len - 1;
 
         if (safeConcatenation && (len > 0 || lenDirectives > 0))
+        {
             _.js += '\n';
+            ++_.line;
+            _.col = 0;
+        }
 
         for (var i = 0; i < lenDirectives; ++i)
         {
@@ -2639,10 +3503,19 @@ var StmtRawGen = {
             var $item = $body[i];
 
             _.js += _.indent;
+            _.col += _.indent.length;
+
             StmtGen[$item.type]($item, Preset.s5(!safeConcatenation && i === lastIdx));
 
             if (i !== lastIdx)
+            {
                 _.js += _.newline;
+                _.line += _.newlineNumLines;
+                if (_.newlineResetsCol)
+                    _.col = _.newlineNumCols;
+                else
+                    _.col += _.newlineNumCols;
+            }
         }
     },
 
@@ -2651,10 +3524,17 @@ var StmtRawGen = {
         var name = $stmt.name.name,
             isGenerator = !!$stmt.isGenerator;
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += isGenerator ? ('function*' + _.optSpace) : ('function' + _.space);
+        _.col += isGenerator ? (9 + _.optSpaceLength) : (8 + _.spaceLength);
 
         if (name !== '*default*')
-            _.js += $stmt.name.name;
+        {
+            _.js += name;
+            _.col += name.length;
+        }
 
         generateFunction($stmt);
     },
@@ -2663,16 +3543,27 @@ var StmtRawGen = {
     {
         var $arg = $stmt.expression;
 
+        if (sourcemap)
+            addMapping($stmt);
+
         if ($arg)
         {
-            var argJs = exprToJs($arg, Preset.e5);
-            _.js += join('return', argJs);
+            var oldLine = _.line;
+            _.col += 6;
+            var argJs = join('return', exprToJs($arg, Preset.e5), oldLine);
+            _.js += argJs;
         }
         else
+        {
             _.js += 'return';
+            _.col += 6;
+        }
 
         if (semicolons || !settings.semicolonOptional)
+        {
             _.js += ';';
+            ++_.col;
+        }
     },
 
     WhileStatement: function generateWhileStatement($stmt, settings)
@@ -2682,9 +3573,16 @@ var StmtRawGen = {
             bodySemicolonOptional = !semicolons && settings.semicolonOptional,
             prevIndent = shiftIndent();
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'while' + _.optSpace + '(';
+        _.col += 6 + _.optSpaceLength;
+
         ExprGen[$test.type]($test, Preset.e5);
+
         _.js += ')';
+        ++_.col;
         _.indent = prevIndent;
 
         _.js += adoptionPrefix($body);
@@ -2698,11 +3596,20 @@ var StmtRawGen = {
             bodySemicolonOptional = !semicolons && settings.semicolonOptional,
             prevIndent = shiftIndent();
 
+        if (sourcemap)
+            addMapping($stmt);
+
         _.js += 'with' + _.optSpace + '(';
+        _.col += 5 + _.optSpaceLength;
+
         ExprGen[$obj.type]($obj, Preset.e5);
+
         _.js += ')';
+        ++_.col;
+
         _.indent = prevIndent;
         _.js += adoptionPrefix($body);
+
         StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
     }
 };
@@ -2740,6 +3647,8 @@ function stmtToJs($stmt, settings)
 function run($node)
 {
     _.js = '';
+    _.line = 0;
+    _.col = 0;
 
     if (StmtGen[$node.type])
         StmtGen[$node.type]($node, Preset.s7);
@@ -2775,11 +3684,19 @@ function createExprGenWithExtras()
 // Strings
 var _ = {
     js: '',
+    line: 0,
+    col: 0,
     newline: '\n',
     optSpace: ' ',
     space: ' ',
     indentUnit: '    ',
-    indent: ''
+    indent: '',
+
+    optSpaceLength: 1,
+    spaceLength: 1,
+    newlineNumLines: 1,
+    newlineNumCols: 0,
+    newlineResetsCol: true
 };
 
 
@@ -2794,26 +3711,9 @@ function generate ($node, options)
 
     if (options)
     {
-        // NOTE: Obsolete options
-        //
-        //   `options.indent`
-        //   `options.base`
-        //
-        // Instead of them, we can use `option.format.indent`
-
-        if (typeof options.indent === 'string')
-            defaultOptions.format.indent.style = options.indent;
-
-        if (typeof options.base === 'number')
-            defaultOptions.format.indent.base = options.base;
-
         options = updateDeeply(defaultOptions, options);
         _.indentUnit = options.format.indent.style;
-
-        if (typeof options.base === 'string')
-            _.indent = options.base;
-        else
-            _.indent = stringRepeat(_.indentUnit, options.format.indent.base);
+        _.indent = stringRepeat(_.indentUnit, options.format.indent.base);
     }
     else
     {
@@ -2835,11 +3735,37 @@ function generate ($node, options)
         _.newline = _.optSpace = _.indentUnit = _.indent = '';
 
     _.space = _.optSpace ? _.optSpace : ' ';
+
+    // check optSpace and indent for newlines
+    if (_.optSpace.indexOf('\n') >= 0)
+        throw 'options.format.space may not contain the newline character';
+    if (_.indent.indexOf('\n') >= 0)
+        throw 'options.format.indent.style may not contain the newline character';
+
+    // compute lengths for spaces and newlines
+    _.optSpaceLength = _.optSpace.length;
+    _.spaceLength = _.space.length;
+    _.newlineNumLines = 0;
+    _.newlineResetsCol = false;
+    var newlineLength = _.newline.length;
+    var lastNewline = -1;
+    for (var i = 0; i < newlineLength; ++i)
+    {
+        if (_.newline.charAt(i) === '\n')
+        {
+            ++_.newlineNumLines;
+            _.newlineResetsCol = true;
+            lastNewline = i;
+        }
+    }
+    _.newlineNumCols = newlineLength - lastNewline - 1;
+
     parentheses = options.format.parentheses;
     semicolons = options.format.semicolons;
     safeConcatenation = options.format.safeConcatenation;
     directive = options.directive;
-    parse = json ? null : options.parse;
+    sourcemap = $node.loc ? options.sourcemap : undefined;
+    filename = options.filename || 'unnamed.js';
     extra = options;
 
     if (extra.verbatim)
