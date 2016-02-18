@@ -203,6 +203,7 @@ null\n
 ('\u2028')
 ('\u2029')
 ('\u202a')
+('\u17b4\u17b5\u200c')
 ('\0')
 'use strict'; ('\0')
 'use strict'; ('\0x')
@@ -499,6 +500,7 @@ function f() { new["target"]; }
 ({"\"":0,"'":1})
 ({a:0,"":1})
 ({a:0,"\\":1})
+({"\u17b4":"\\u17b4","\u17b5":"\\u17b5","\u200c":"\\u200c","\u200d":"\\u200d"})
 
 // static-member-expression.js
 a.b

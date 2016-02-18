@@ -315,7 +315,7 @@ function isIdentifierCh(cp)
     return NON_ASCII_IDENTIFIER_CHARACTERS_REGEXP.test(String.fromCharCode(cp));
 }
 
-function isIdentifierString(s)
+function isUnquotedPropertyName(s)
 {
     var len = s.length;
 
@@ -323,13 +323,13 @@ function isIdentifierString(s)
         return false;
 
     var cp = s.charCodeAt(0);
-    if (cp >= 48 && cp <= 57)
+    if (48 <= cp && cp <= 57)
         return false;
 
     for (var i = 0; i < len; ++i)
     {
         var cp = s.charCodeAt(i);
-        if (cp === 92 || !isIdentifierCh(cp))
+        if (!((48 <= cp && cp <= 57) || (65 <= cp && cp <= 90) || (97 <= cp && cp <= 122) || cp === 36 || cp === 95))
             return false;
     }
 
@@ -1811,7 +1811,7 @@ var ExprRawGen = {
     {
         var value = $expr.value;
 
-        if (!isIdentifierString(value))
+        if (!isUnquotedPropertyName(value))
             value = escapeString(value);
 
         _.js += value;
