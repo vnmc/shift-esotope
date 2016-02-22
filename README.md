@@ -40,7 +40,7 @@ var options = { ... };
 var result = ShiftEsotope.generate(ast, options);
 ```
 
-For more usage examples, check out the files in the "examples" folder.
+For more usage examples, check out the files in the [examples](https://github.com/vnmc/shift-esotope/tree/master/examples) folder.
 
 ### Options
 
