@@ -19,7 +19,7 @@
     "url": "http://github.com/vnmc/shift-esotope.git"
   },
   "devDependencies": {
-    "shift-parser": "4.1.0",
+    "shift-parser": ">=4.1.1",
     "source-map": ">=0.5.3",
     "shift-codegen": "4.0.3",
     "should": "3.3.2",

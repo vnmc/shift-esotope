@@ -654,7 +654,6 @@ while (i-->0) {}
 var x = 1<!--foo
 /* not comment*/; i-->0
 class A extends B { a() { [super.b] = c } }
-class A extends B { a() { ({b: super[c]}) = d } }
 
 // whitespace.js
 { x\n++y }

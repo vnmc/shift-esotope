@@ -90,10 +90,6 @@ Clone the repo, then
 npm run test
 ```
 
-Please note that some tests will fail due to a [bug in the Shift parser](https://github.com/shapesecurity/shift-parser-js/issues/255).
-
-[Our fork](https://github.com/matthias-christen/shift-parser-js) contains a hacky fix for this bug.
-
 ## Benchmark
 ```
 npm run benchmark
