@@ -60,7 +60,8 @@ var isArray,
     directive,
     extra,
     sourcemap,
-    filename;
+    filename,
+    sourcemapLineOffset;
 
 var Syntax = {
     ArrayBinding:                 'ArrayBinding',
@@ -230,7 +231,8 @@ function getDefaultOptions()
         directive: true,
         verbatim: null,
         sourcemap: null,
-        filename: ''
+        filename: '',
+        sourcemapLineOffset: 0
     };
 }
 
@@ -754,9 +756,12 @@ function generateFunction($node)
 
 function addMapping($stmt, name)
 {
+    if (!$stmt.loc)
+        return;
+
     sourcemap.addMapping({
         generated: {
-            line: _.line + 1,
+            line: _.line + sourcemapLineOffset + 1,
             column: _.col
         },
         source: $stmt.loc.start.source || filename,
@@ -3766,6 +3771,7 @@ function generate ($node, options)
     directive = options.directive;
     sourcemap = $node.loc ? options.sourcemap : undefined;
     filename = options.filename || 'unnamed.js';
+    sourcemapLineOffset = options.sourcemapLineOffset || 0;
     extra = options;
 
     if (extra.verbatim)
