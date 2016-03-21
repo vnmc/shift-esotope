@@ -1,5 +1,6 @@
 /*
  Copyright (C) 2016 Matthias Christen <christen@vanamco.com>
+ Copyright (C) 2016 Florian Müller <mueller@vanamco.com>
  Copyright (C) 2014 Ivan Nikulin <ifaaan@gmail.com>
  Copyright (C) 2012-2014 Yusuke Suzuki <utatane.tea@gmail.com>
  Copyright (C) 2012-2013 Michael Ficarra <escodegen.copyright@michael.ficarra.me>
@@ -61,7 +62,8 @@ var isArray,
     extra,
     sourcemap,
     filename,
-    sourcemapLineOffset;
+    sourcemapLineOffset,
+    inputSourcemap;
 
 var Syntax = {
     ArrayBinding:                 'ArrayBinding',
@@ -232,7 +234,8 @@ function getDefaultOptions()
         verbatim: null,
         sourcemap: null,
         filename: '',
-        sourcemapLineOffset: 0
+        sourcemapLineOffset: 0,
+        inputSourcemap: null
     };
 }
 
@@ -387,7 +390,7 @@ function updateDeeply(target, override)
         {
             var val = override[key];
 
-            if (key !== 'sourcemap' && isHashObject(val))
+            if (key !== 'sourcemap' && key !== 'inputSourcemap' && isHashObject(val))
             {
                 if (isHashObject(target[key]))
                     updateDeeply(target[key], val);
@@ -759,16 +762,33 @@ function addMapping($stmt, name)
     if (!$stmt.loc)
         return;
 
+    var source = $stmt.loc.start.source || filename;
+    var origLine = $stmt.loc.start.line;
+    var origColumn = $stmt.loc.start.column;
+
+    if (inputSourcemap)
+    {
+        var info = inputSourcemap.originalPositionFor({
+            line: origLine,
+            column: origColumn
+        });
+
+        if (info.source === null)
+            return;
+
+        source = info.source;
+        origLine = info.line;
+        origColumn = info.column;
+        name = info.name || name;
+    }
+
     sourcemap.addMapping({
         generated: {
             line: _.line + sourcemapLineOffset + 1,
             column: _.col
         },
-        source: $stmt.loc.start.source || filename,
-        original: {
-            line: $stmt.loc.start.line,
-            column: $stmt.loc.start.column
-        },
+        source: source,
+        original: { line: origLine, column: origColumn },
         name: name || ''
     }, $stmt);
 }
@@ -3710,7 +3730,7 @@ var ExprGen = undefined,
     StmtGen = StmtRawGen;
 
 
-function generate ($node, options)
+function generate($node, options)
 {
     var defaultOptions = getDefaultOptions();
 
@@ -3772,6 +3792,7 @@ function generate ($node, options)
     sourcemap = $node.loc ? options.sourcemap : undefined;
     filename = options.filename || 'unnamed.js';
     sourcemapLineOffset = options.sourcemapLineOffset || 0;
+    inputSourcemap = options.inputSourcemap || undefined;
     extra = options;
 
     if (extra.verbatim)
