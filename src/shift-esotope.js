@@ -63,7 +63,8 @@ var isArray,
     sourcemap,
     filename,
     sourcemapLineOffset,
-    inputSourcemap;
+    inputSourcemap,
+    pureSourcemap;
 
 var Syntax = {
     ArrayBinding:                 'ArrayBinding',
@@ -300,7 +301,8 @@ function getDefaultOptions()
         sourcemap: null,
         filename: '',
         sourcemapLineOffset: 0,
-        inputSourcemap: null
+        inputSourcemap: null,
+        pureSourcemap: null
     };
 }
 
@@ -457,7 +459,7 @@ function updateDeeply(target, override)
         {
             var val = override[key];
 
-            if (key !== 'sourcemap' && key !== 'inputSourcemap' && isHashObject(val))
+            if (key !== 'sourcemap' && key !== 'inputSourcemap' && key !== 'pureSourcemap' && isHashObject(val))
             {
                 if (isHashObject(target[key]))
                     updateDeeply(target[key], val);
@@ -832,6 +834,19 @@ function addMapping($stmt, name)
     var source = $stmt.loc.start.source || filename;
     var origLine = $stmt.loc.start.line;
     var origColumn = $stmt.loc.start.column;
+
+    if (pureSourcemap && inputSourcemap)
+    {
+        pureSourcemap.addMapping({
+            generated: {
+                line: _.line + sourcemapLineOffset + 1,
+                column: _.col
+            },
+            source: source,
+            original: { line: origLine, column: origColumn },
+            name: name || ''
+        }, $stmt);
+    }
 
     if (inputSourcemap)
     {
@@ -3860,6 +3875,7 @@ function generate($node, options)
     filename = options.filename || 'unnamed.js';
     sourcemapLineOffset = options.sourcemapLineOffset || 0;
     inputSourcemap = options.inputSourcemap || undefined;
+    pureSourcemap = options.pureSourcemap || undefined;
     extra = options;
 
     if (extra.verbatim)
