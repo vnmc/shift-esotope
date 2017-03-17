@@ -197,8 +197,8 @@ null\n
 ('\\\'')
 ("x")
 ("\\\"")
-('\r')
-('\r\\n')
+('\\r')
+('\\r\\n')
 ('\\n')
 ('\u2028')
 ('\u2029')
@@ -654,6 +654,20 @@ while (i-->0) {}
 var x = 1<!--foo
 /* not comment*/; i-->0
 class A extends B { a() { [super.b] = c } }
+class A extends B { a() { ({b: super[c]} = d) } }
+function* f(){ () => yield; }
+null && (x += null)
+
+// parenthesized-destructuring.js
+[(a)] = 0
+[(a) = 0] = 1
+[(a.b)] = 0
+[a = (b = c)] = 0
+[(a = 0)]
+({a:(b)} = 0)
+({a:(b) = 0} = 1)
+({a:(b.c)} = 0)
+({a:(b = 0)})
 
 // whitespace.js
 { x\n++y }
@@ -708,6 +722,7 @@ export class A{};0
 export {};0
 
 // import.js
+import 'a'
 import * as a from 'a'
 import a from 'c'
 import a, {} from 'c'
@@ -801,6 +816,8 @@ for(a in b);
 for(a.b in c);
 for(let of in of);
 for(const a in b);
+for({a=0} in b);
+for([{a=0}] in b);
 
 // for-of-statement.js
 for (var x of list) process(x);
@@ -809,6 +826,8 @@ for(a of b);
 for(let [a] of b);
 for(let of of b);
 for(const a of b);
+for({a=0} of b);
+for([{a=0}] of b);
 
 // for-statement.js
 for(x, y;;);

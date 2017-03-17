@@ -67,92 +67,102 @@ var isArray,
     pureSourcemap;
 
 var Syntax = {
-    ArrayBinding:                 'ArrayBinding',
-    ArrayExpression:              'ArrayExpression',
-    ArrowExpression:              'ArrowExpression',
-    AssignmentExpression:         'AssignmentExpression',
-    Block:                        'Block',
-    BlockStatement:               'BlockStatement',
-    BinaryExpression:             'BinaryExpression',
-    BindingIdentifier:            'BindingIdentifier',
-    BindingPropertyIdentifier:    'BindingPropertyIdentifier',
-    BindingPropertyProperty:      'BindingPropertyProperty',
-    BindingWithDefault:           'BindingWithDefault',
-    BreakStatement:               'BreakStatement',
-    CallExpression:               'CallExpression',
-    CatchClause:                  'CatchClause',
-    ClassDeclaration:             'ClassDeclaration',
-    ClassExpression:              'ClassExpression',
-    ClassElement:                 'ClassElement',
-    CompoundAssignmentExpression: 'CompoundAssignmentExpression',
-    ComputedMemberExpression:     'ComputedMemberExpression',
-    ComputedPropertyName:         'ComputedPropertyName',
-    ConditionalExpression:        'ConditionalExpression',
-    ContinueStatement:            'ContinueStatement',
-    DataProperty:                 'DataProperty',
-    DebuggerStatement:            'DebuggerStatement',
-    Directive:                    'Directive',
-    DoWhileStatement:             'DoWhileStatement',
-    EmptyStatement:               'EmptyStatement',
-    Export:                       'Export',
-    ExportAllFrom:                'ExportAllFrom',
-    ExportDefault:                'ExportDefault',
-    ExportFrom:                   'ExportFrom',
-    ExportSpecifier:              'ExportSpecifier',
-    ExpressionStatement:          'ExpressionStatement',
-    FormalParameters:             'FormalParameters',
-    ForStatement:                 'ForStatement',
-    ForInStatement:               'ForInStatement',
-    ForOfStatement:               'ForOfStatement',
-    FunctionDeclaration:          'FunctionDeclaration',
-    FunctionExpression:           'FunctionExpression',
-    FunctionBody:                 'FunctionBody',
-    Getter:                       'Getter',
-    IdentifierExpression:         'IdentifierExpression',
-    IfStatement:                  'IfStatement',
-    Import:                       'Import',
-    ImportNamespace:              'ImportNamespace',
-    ImportSpecifier:              'ImportSpecifier',
-    LiteralBooleanExpression:     'LiteralBooleanExpression',
-    LiteralInfinityExpression:    'LiteralInfinityExpression',
-    LiteralNullExpression:        'LiteralNullExpression',
-    LiteralNumericExpression:     'LiteralNumericExpression',
-    LiteralRegExpExpression:      'LiteralRegExpExpression',
-    LiteralStringExpression:      'LiteralStringExpression',
-    LabeledStatement:             'LabeledStatement',
-    Method:                       'Method',
-    Module:                       'Module',
-    NewExpression:                'NewExpression',
-    NewTargetExpression:          'NewTargetExpression',
-    ObjectBinding:                'ObjectBinding',
-    ObjectExpression:             'ObjectExpression',
-    ReturnStatement:              'ReturnStatement',
-    Script:                       'Script',
-    Setter:                       'Setter',
-    ShorthandProperty:            'ShorthandProperty',
-    SpreadElement:                'SpreadElement',
-    StaticMemberExpression:       'StaticMemberExpression',
-    StaticPropertyName:           'StaticPropertyName',
-    Super:                        'Super',
-    SwitchStatement:              'SwitchStatement',
-    SwitchStatementWithDefault:   'SwitchStatementWithDefault',
-    SwitchCase:                   'SwitchCase',
-    SwitchDefault:                'SwitchDefault',
-    TemplateElement:              'TemplateElement',
-    TemplateExpression:           'TemplateExpression',
-    ThisExpression:               'ThisExpression',
-    ThrowStatement:               'ThrowStatement',
-    TryCatchStatement:            'TryCatchStatement',
-    TryFinallyStatement:          'TryFinallyStatement',
-    UnaryExpression:              'UnaryExpression',
-    UpdateExpression:             'UpdateExpression',
-    VariableDeclaration:          'VariableDeclaration',
-    VariableDeclarationStatement: 'VariableDeclarationStatement',
-    VariableDeclarator:           'VariableDeclarator',
-    WhileStatement:               'WhileStatement',
-    WithStatement:                'WithStatement',
-    YieldExpression:              'YieldExpression',
-    YieldGeneratorExpression:     'YieldGeneratorExpression'
+    ArrayBinding:                       'ArrayBinding',
+    ArrayAssignmentTarget:              'ArrayAssignmentTarget',
+    ArrayExpression:                    'ArrayExpression',
+    ArrowExpression:                    'ArrowExpression',
+    AssignmentExpression:               'AssignmentExpression',
+    AssignmentTargetIdentifier:         'AssignmentTargetIdentifier',
+    AssignmentTargetPropertyIdentifier: 'AssignmentTargetPropertyIdentifier',
+    AssignmentTargetPropertyProperty:   'AssignmentTargetPropertyProperty',
+    AssignmentTargetWithDefault:        'AssignmentTargetWithDefault',
+    Block:                              'Block',
+    BlockStatement:                     'BlockStatement',
+    BinaryExpression:                   'BinaryExpression',
+    BindingIdentifier:                  'BindingIdentifier',
+    BindingPropertyIdentifier:          'BindingPropertyIdentifier',
+    BindingPropertyProperty:            'BindingPropertyProperty',
+    BindingWithDefault:                 'BindingWithDefault',
+    BreakStatement:                     'BreakStatement',
+    CallExpression:                     'CallExpression',
+    CatchClause:                        'CatchClause',
+    ClassDeclaration:                   'ClassDeclaration',
+    ClassExpression:                    'ClassExpression',
+    ClassElement:                       'ClassElement',
+    CompoundAssignmentExpression:       'CompoundAssignmentExpression',
+    ComputedMemberAssignmentTarget:     'ComputedMemberAssignmentTarget',
+    ComputedMemberExpression:           'ComputedMemberExpression',
+    ComputedPropertyName:               'ComputedPropertyName',
+    ConditionalExpression:              'ConditionalExpression',
+    ContinueStatement:                  'ContinueStatement',
+    DataProperty:                       'DataProperty',
+    DebuggerStatement:                  'DebuggerStatement',
+    Directive:                          'Directive',
+    DoWhileStatement:                   'DoWhileStatement',
+    EmptyStatement:                     'EmptyStatement',
+    Export:                             'Export',
+    ExportAllFrom:                      'ExportAllFrom',
+    ExportDefault:                      'ExportDefault',
+    ExportFrom:                         'ExportFrom',
+    ExportFromSpecifier:                'ExportFromSpecifier',
+    ExportLocals:                       'ExportLocals',
+    ExportLocalSpecifier:               'ExportLocalSpecifier',
+    ExportSpecifier:                    'ExportSpecifier',
+    ExpressionStatement:                'ExpressionStatement',
+    FormalParameters:                   'FormalParameters',
+    ForStatement:                       'ForStatement',
+    ForInStatement:                     'ForInStatement',
+    ForOfStatement:                     'ForOfStatement',
+    FunctionDeclaration:                'FunctionDeclaration',
+    FunctionExpression:                 'FunctionExpression',
+    FunctionBody:                       'FunctionBody',
+    Getter:                             'Getter',
+    IdentifierExpression:               'IdentifierExpression',
+    IfStatement:                        'IfStatement',
+    Import:                             'Import',
+    ImportNamespace:                    'ImportNamespace',
+    ImportSpecifier:                    'ImportSpecifier',
+    LiteralBooleanExpression:           'LiteralBooleanExpression',
+    LiteralInfinityExpression:          'LiteralInfinityExpression',
+    LiteralNullExpression:              'LiteralNullExpression',
+    LiteralNumericExpression:           'LiteralNumericExpression',
+    LiteralRegExpExpression:            'LiteralRegExpExpression',
+    LiteralStringExpression:            'LiteralStringExpression',
+    LabeledStatement:                   'LabeledStatement',
+    Method:                             'Method',
+    Module:                             'Module',
+    NewExpression:                      'NewExpression',
+    NewTargetExpression:                'NewTargetExpression',
+    ObjectBinding:                      'ObjectBinding',
+    ObjectExpression:                   'ObjectExpression',
+    ReturnStatement:                    'ReturnStatement',
+    Script:                             'Script',
+    Setter:                             'Setter',
+    ShorthandProperty:                  'ShorthandProperty',
+    SpreadElement:                      'SpreadElement',
+    StaticMemberAssignmentTarget:       'StaticMemberAssignmentTarget',
+    StaticMemberExpression:             'StaticMemberExpression',
+    StaticPropertyName:                 'StaticPropertyName',
+    Super:                              'Super',
+    SwitchStatement:                    'SwitchStatement',
+    SwitchStatementWithDefault:         'SwitchStatementWithDefault',
+    SwitchCase:                         'SwitchCase',
+    SwitchDefault:                      'SwitchDefault',
+    TemplateElement:                    'TemplateElement',
+    TemplateExpression:                 'TemplateExpression',
+    ThisExpression:                     'ThisExpression',
+    ThrowStatement:                     'ThrowStatement',
+    TryCatchStatement:                  'TryCatchStatement',
+    TryFinallyStatement:                'TryFinallyStatement',
+    UnaryExpression:                    'UnaryExpression',
+    UpdateExpression:                   'UpdateExpression',
+    VariableDeclaration:                'VariableDeclaration',
+    VariableDeclarationStatement:       'VariableDeclarationStatement',
+    VariableDeclarator:                 'VariableDeclarator',
+    WhileStatement:                     'WhileStatement',
+    WithStatement:                      'WithStatement',
+    YieldExpression:                    'YieldExpression',
+    YieldGeneratorExpression:           'YieldGeneratorExpression'
 };
 module.exports.Syntax = Syntax;
 
@@ -307,7 +317,7 @@ function getDefaultOptions()
 }
 
 
-/////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // Lexical Utilities
 
 // Constants
@@ -876,7 +886,7 @@ function addMapping($stmt, name)
 }
 
 
-/////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // Syntactic Entity Generation Presets
 
 var Preset = {
@@ -1222,7 +1232,7 @@ var Preset = {
 };
 
 
-/////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // Expressions
 
 // Regular expressions
@@ -1232,11 +1242,17 @@ var FLOATING_OR_OCTAL_REGEXP = /[.eExX]|^0[0-9]+/,
 
 // Common expression generators
 
+function generateIdentifierExpression($expr)
+{
+    _.js += $expr.name;
+    _.col += $expr.name.length;
+}
+
 function generateArrayPatternOrExpression($expr)
 {
     var $elems = $expr.elements,
         elemCount = $elems.length,
-        $rest = $expr.restElement;
+        $rest = $expr.restElement || $expr.rest;
 
     if (elemCount)
     {
@@ -1327,6 +1343,217 @@ function generateArrayPatternOrExpression($expr)
     {
         _.js += '[]';
         _.col += 2;
+    }
+}
+
+function generateObjectBinding($expr)
+{
+    var $props = $expr.properties,
+        propCount = $props.length;
+
+    if (propCount)
+    {
+        var lastPropIdx = propCount - 1,
+            multiline = false;
+
+        if (propCount === 1)
+            multiline = $props[0].binding.type !== Syntax.BindingIdentifier;
+        else
+        {
+            for (var i = 0; i < propCount; ++i)
+            {
+                // TODO:
+                if (!$props[i].shorthand)
+                {
+                    multiline = true;
+                    break;
+                }
+            }
+        }
+
+        if (multiline)
+        {
+            _.js += '{' + _.newline;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols;
+            else
+                _.col += _.newlineNumCols;
+        }
+        else
+        {
+            _.js += '{';
+            ++_.col;
+        }
+
+        var prevIndent = shiftIndent(),
+            propSuffix = ',' + (multiline ? _.newline : _.optSpace),
+            propSuffixLineIncrement = multiline ? _.newlineNumLines : 0;
+
+        for (var i = 0; i < propCount; ++i)
+        {
+            var $prop = $props[i];
+
+            if (multiline)
+            {
+                _.js += _.indent;
+                _.col += _.indent.length;
+            }
+
+            ExprGen[$prop.type]($prop, Preset.e5);
+
+            if (i !== lastPropIdx)
+            {
+                _.js += propSuffix;
+                _.line += propSuffixLineIncrement;
+                if (!multiline)
+                    _.col += _.optSpaceLength;
+                else if (_.newlineResetsCol)
+                    _.col = 0;
+            }
+        }
+
+        _.indent = prevIndent;
+
+        if (multiline)
+        {
+            _.js += _.newline + _.indent + '}';
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols + _.indent.length + 1;
+            else
+                _.col += _.newlineNumCols + _.indent.length + 1;
+        }
+        else
+        {
+            _.js += '}';
+            ++_.col;
+        }
+    }
+    else
+    {
+        _.js += '{}';
+        _.col += 2;
+    }
+}
+
+function generateBindingPropertyIdentifier($expr)
+{
+    var $binding = $expr.binding,
+        $init = $expr.init;
+
+    ExprGen[$binding.type]($binding, Preset.e5);
+
+    if ($init)
+    {
+        _.js += '=' + _.optSpace;
+        _.col += 1 + _.optSpaceLength;
+
+        ExprGen[$init.type]($init, Preset.e4);
+    }
+}
+
+function generateBindingPropertyProperty($expr)
+{
+    var $name = $expr.name,
+        $binding = $expr.binding;
+
+    ExprGen[$name.type]($name, Preset.e5);
+
+    _.js += ':' + _.optSpace;
+    _.col += 1 + _.optSpaceLength;
+
+    ExprGen[$binding.type]($binding, Preset.e4);
+}
+
+function generateBindingWithDefault($expr)
+{
+    var $left = $expr.binding,
+        $right = $expr.init;
+
+    ExprGen[$left.type]($left, Preset.e17);
+
+    _.js += _.optSpace + '=' + _.optSpace;
+    _.col += _.optSpaceLength + 1 + _.optSpaceLength;
+
+    ExprGen[$right.type]($right, Preset.e18);
+}
+
+function generateStaticMemberExpression($expr, settings)
+{
+    var $obj = $expr.object,
+        $prop = $expr.property,
+        parenthesize = Precedence.Member < settings.precedence,
+        isNumObj = $obj.type === Syntax.LiteralNumericExpression;
+
+    if (parenthesize)
+    {
+        _.js += '(';
+        ++_.col;
+    }
+
+    if (isNumObj)
+    {
+        // NOTE: When the following conditions are all true:
+        //   1. No floating point
+        //   2. Don't have exponents
+        //   3. The last character is a decimal digit
+        //   4. Not hexadecimal OR octal number literal
+        // then we should add a floating point.
+
+        var oldLine = _.line,
+            numJs = exprToJs($obj, Preset.e11(settings.allowCall)),
+            withPoint = LAST_DECIMAL_DIGIT_REGEXP.test(numJs) && !FLOATING_OR_OCTAL_REGEXP.test(numJs);
+
+        if (withPoint)
+        {
+            _.js += numJs + '.';
+            if (oldLine === _.line)
+                ++_.col;
+        }
+        else
+            _.js += numJs;
+    }
+    else
+        ExprGen[$obj.type]($obj, Preset.e11(settings.allowCall));
+
+    _.js += '.' + $prop;
+    _.col += 1 + $prop.length;
+
+    if (parenthesize)
+    {
+        _.js += ')';
+        ++_.col;
+    }
+}
+
+function generateComputedMemberExpression($expr, settings)
+{
+    var $obj = $expr.object,
+        objType = $obj.type,
+        $prop = $expr.expression,
+        parenthesize = Precedence.Member < settings.precedence || (objType === Syntax.IdentifierExpression && $obj.name === 'let');
+
+    if (parenthesize)
+    {
+        _.js += '(';
+        ++_.col;
+    }
+
+    ExprGen[objType]($obj, Preset.e11(settings.allowCall));
+
+    _.js += '[';
+    ++_.col;
+
+    ExprGen[$prop.type]($prop, Preset.e15(settings.allowCall));
+
+    _.js += ']';
+    ++_.col;
+
+    if (parenthesize)
+    {
+        _.js += ')';
+        ++_.col;
     }
 }
 
@@ -1587,83 +1814,13 @@ var ExprRawGen = {
         _.col += 10;
     },
 
-    StaticMemberExpression: function generateStaticMemberExpression($expr, settings)
-    {
-        var $obj = $expr.object,
-            $prop = $expr.property,
-            parenthesize = Precedence.Member < settings.precedence,
-            isNumObj = $obj.type === Syntax.LiteralNumericExpression;
+    StaticMemberExpression: generateStaticMemberExpression,
 
-        if (parenthesize)
-        {
-            _.js += '(';
-            ++_.col;
-        }
+    StaticMemberAssignmentTarget: generateStaticMemberExpression,
 
-        if (isNumObj)
-        {
-            // NOTE: When the following conditions are all true:
-            //   1. No floating point
-            //   2. Don't have exponents
-            //   3. The last character is a decimal digit
-            //   4. Not hexadecimal OR octal number literal
-            // then we should add a floating point.
+    ComputedMemberExpression: generateComputedMemberExpression,
 
-            var oldLine = _.line,
-                numJs = exprToJs($obj, Preset.e11(settings.allowCall)),
-                withPoint = LAST_DECIMAL_DIGIT_REGEXP.test(numJs) && !FLOATING_OR_OCTAL_REGEXP.test(numJs);
-
-            if (withPoint)
-            {
-                _.js += numJs + '.';
-                if (oldLine === _.line)
-                    ++_.col;
-            }
-            else
-                _.js += numJs;
-        }
-        else
-            ExprGen[$obj.type]($obj, Preset.e11(settings.allowCall));
-
-        _.js += '.' + $prop;
-        _.col += 1 + $prop.length;
-
-        if (parenthesize)
-        {
-            _.js += ')';
-            ++_.col;
-        }
-    },
-
-    ComputedMemberExpression: function generateComputedMemberExpression($expr, settings)
-    {
-        var $obj = $expr.object,
-            objType = $obj.type,
-            $prop = $expr.expression,
-            parenthesize = Precedence.Member < settings.precedence || (objType === Syntax.IdentifierExpression && $obj.name === 'let');
-
-        if (parenthesize)
-        {
-            _.js += '(';
-            ++_.col;
-        }
-
-        ExprGen[objType]($obj, Preset.e11(settings.allowCall));
-
-        _.js += '[';
-        ++_.col;
-
-        ExprGen[$prop.type]($prop, Preset.e15(settings.allowCall));
-
-        _.js += ']';
-        ++_.col;
-
-        if (parenthesize)
-        {
-            _.js += ')';
-            ++_.col;
-        }
-    },
+    ComputedMemberAssignmentTarget: generateComputedMemberExpression,
 
     UnaryExpression: function generateUnaryExpression($expr, settings)
     {
@@ -1814,6 +1971,8 @@ var ExprRawGen = {
     },
 
     ArrayBinding: generateArrayPatternOrExpression,
+
+    ArrayAssignmentTarget: generateArrayPatternOrExpression,
 
     ArrayExpression: generateArrayPatternOrExpression,
 
@@ -1993,8 +2152,15 @@ var ExprRawGen = {
 
     ShorthandProperty: function generateShorthandProperty($expr)
     {
-        _.js += $expr.name;
-        _.col += $expr.name.length;
+        var $name = $expr.name;
+
+        if ($name.type !== undefined)
+            ExprGen[$name.type]($name, Preset.e5);
+        else if (typeof $name === 'string')
+        {
+            _.js += $name;
+            _.col += $name.length;
+        }
     },
 
     ObjectExpression: function generateObjectExpression($expr)
@@ -2046,96 +2212,9 @@ var ExprRawGen = {
         }
     },
 
-    ObjectBinding: function generateObjectBinding($expr)
-    {
-        var $props = $expr.properties,
-            propCount = $props.length;
+    ObjectBinding: generateObjectBinding,
 
-        if (propCount)
-        {
-            var lastPropIdx = propCount - 1,
-                multiline = false;
-
-            if (propCount === 1)
-                multiline = $props[0].binding.type !== Syntax.BindingIdentifier;
-            else
-            {
-                for (var i = 0; i < propCount; ++i)
-                {
-                    // TODO:
-                    if (!$props[i].shorthand)
-                    {
-                        multiline = true;
-                        break;
-                    }
-                }
-            }
-
-            if (multiline)
-            {
-                _.js += '{' + _.newline;
-                _.line += _.newlineNumLines;
-                if (_.newlineResetsCol)
-                    _.col = _.newlineNumCols;
-                else
-                    _.col += _.newlineNumCols;
-            }
-            else
-            {
-                _.js += '{';
-                ++_.col;
-            }
-
-            var prevIndent = shiftIndent(),
-                propSuffix = ',' + (multiline ? _.newline : _.optSpace),
-                propSuffixLineIncrement = multiline ? _.newlineNumLines : 0;
-
-            for (var i = 0; i < propCount; ++i)
-            {
-                var $prop = $props[i];
-
-                if (multiline)
-                {
-                    _.js += _.indent;
-                    _.col += _.indent.length;
-                }
-
-                ExprGen[$prop.type]($prop, Preset.e5);
-
-                if (i !== lastPropIdx)
-                {
-                    _.js += propSuffix;
-                    _.line += propSuffixLineIncrement;
-                    if (!multiline)
-                        _.col += _.optSpaceLength;
-                    else if (_.newlineResetsCol)
-                        _.col = 0;
-                }
-            }
-
-            _.indent = prevIndent;
-
-            if (multiline)
-            {
-                _.js += _.newline + _.indent + '}';
-                _.line += _.newlineNumLines;
-                if (_.newlineResetsCol)
-                    _.col = _.newlineNumCols + _.indent.length + 1;
-                else
-                    _.col += _.newlineNumCols + _.indent.length + 1;
-            }
-            else
-            {
-                _.js += '}';
-                ++_.col;
-            }
-        }
-        else
-        {
-            _.js += '{}';
-            _.col += 2;
-        }
-    },
+    ObjectAssignmentTarget: generateObjectBinding,
 
     ThisExpression: function generateThisExpression()
     {
@@ -2143,59 +2222,23 @@ var ExprRawGen = {
         _.col += 4;
     },
 
-    IdentifierExpression: function generateIdentifierExpression($expr)
-    {
-        _.js += $expr.name;
-        _.col += $expr.name.length;
-    },
+    IdentifierExpression: generateIdentifierExpression,
 
-    BindingIdentifier: function generateBindingIdentifier($expr)
-    {
-        _.js += $expr.name;
-        _.col += $expr.name.length;
-    },
+    BindingIdentifier: generateIdentifierExpression,
 
-    BindingPropertyIdentifier: function generateBindingPropertyIdentifier($expr)
-    {
-        var $binding = $expr.binding,
-            $init = $expr.init;
+    AssignmentTargetIdentifier: generateIdentifierExpression,
 
-        ExprGen[$binding.type]($binding, Preset.e5);
+    BindingPropertyIdentifier: generateBindingPropertyIdentifier,
 
-        if ($init)
-        {
-            _.js += '=' + _.optSpace;
-            _.col += 1 + _.optSpaceLength;
+    AssignmentTargetPropertyIdentifier: generateBindingPropertyIdentifier,
 
-            ExprGen[$init.type]($init, Preset.e4);
-        }
-    },
+    BindingPropertyProperty: generateBindingPropertyProperty,
 
-    BindingPropertyProperty: function generateBindingPropertyProperty($expr)
-    {
-        var $name = $expr.name,
-            $binding = $expr.binding;
+    AssignmentTargetPropertyProperty: generateBindingPropertyProperty,
 
-        ExprGen[$name.type]($name, Preset.e5);
+    BindingWithDefault: generateBindingWithDefault,
 
-        _.js += ':' + _.optSpace;
-        _.col += 1 + _.optSpaceLength;
-
-        ExprGen[$binding.type]($binding, Preset.e4);
-    },
-
-    BindingWithDefault: function generateBindingWithDefault($expr)
-    {
-        var $left = $expr.binding,
-            $right = $expr.init;
-
-        ExprGen[$left.type]($left, Preset.e17);
-
-        _.js += _.optSpace + '=' + _.optSpace;
-        _.col += _.optSpaceLength + 1 + _.optSpaceLength;
-
-        ExprGen[$right.type]($right, Preset.e18);
-    },
+    AssignmentTargetWithDefault: generateBindingWithDefault,
 
     ExportSpecifier: function generateExportSpecifier($expr)
     {
@@ -2210,6 +2253,35 @@ var ExprRawGen = {
         {
             _.js += $expr.exportedName;
             _.col += $expr.exportedName.length;
+        }
+    },
+
+    ExportFromSpecifier: function generateExportFromSpecifier($expr)
+    {
+        var $name = $expr.name;
+
+        if ($expr.exportedName)
+        {
+            _.js += $name + _.space + 'as' + _.space + $expr.exportedName;
+            _.col += $name.length + _.spaceLength + 2 + _.spaceLength + $expr.exportedName.length;
+        }
+        else
+        {
+            _.js += $name;
+            _.col += $name.length;
+        }
+    },
+
+    ExportLocalSpecifier: function genereateExportLocalSpecifier($expr)
+    {
+        var $name = $expr.name;
+
+        ExprGen[$name.type]($name, Preset.e5);
+
+        if ($expr.exportedName)
+        {
+            _.js += _.space + 'as' + _.space + $expr.exportedName;
+            _.col += _.spaceLength + 2 + _.spaceLength + $expr.exportedName.length;
         }
     },
 
@@ -2316,8 +2388,24 @@ var ExprRawGen = {
 
     LiteralRegExpExpression: function generateRegExpLiteral($expr)
     {
-        _.js += '/' + $expr.pattern + '/' + $expr.flags;
-        _.col += 2 + $expr.pattern.length + $expr.flags.length;
+        var flags = $expr.flags;
+        if (flags === undefined)
+        {
+            flags = '';
+            if ($expr.global)
+                flags += 'g';
+            if ($expr.ignoreCase)
+                flags += 'i';
+            if ($expr.multiLine)
+                flags += 'm';
+            if ($expr.sticky)
+                flags += 'XXX';
+            if ($expr.unicode)
+                flags += 'u';
+        }
+
+        _.js += '/' + $expr.pattern + '/' + flags;
+        _.col += 2 + $expr.pattern.length + flags.length;
     },
 
     LiteralInfinityExpression: function generateInfinityLiteral($expr)
@@ -2395,7 +2483,7 @@ var ExprRawGen = {
 };
 
 
-/////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // Statements
 
 // Regular expressions
@@ -2441,6 +2529,73 @@ function generateForStatementIterator($op, $stmt, settings)
     _.js += stmtJs + adoptionPrefix($body);
 
     StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
+}
+
+function generateExportFrom($stmt, settings)
+{
+    var $exports = $stmt.namedExports,
+        $moduleSpec = $stmt.moduleSpecifier,
+        exportCount = $exports.length;
+
+    if (sourcemap)
+        addMapping($stmt);
+
+    _.js += 'export';
+    _.col += 6;
+
+    if (exportCount)
+    {
+        var prevIndent = shiftIndent(),
+            lastExportIdx = exportCount - 1;
+
+        _.js += _.optSpace + '{';
+        _.col += _.optSpaceLength + 1;
+
+        for (var i = 0; i < exportCount; ++i)
+        {
+            _.js += _.newline + _.indent;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols + _.indent.length;
+            else
+                _.col += _.newlineNumCols + _.indent.length;
+
+            ExprGen[$exports[i].type]($exports[i], Preset.e5);
+
+            if (i !== lastExportIdx)
+            {
+                _.js += ',';
+                ++_.col;
+            }
+        }
+
+        _.indent = prevIndent;
+        
+        _.js += _.newline + _.indent + '}';
+        _.line += _.newlineNumLines;
+        if (_.newlineResetsCol)
+            _.col = _.newlineNumCols + _.indent.length + 1;
+        else
+            _.col += _.newlineNumCols + _.indent.length + 1;
+    }
+    else
+    {
+        _.js += _.optSpace + '{}';
+        _.col += _.optSpaceLength + 2;
+    }
+
+    if ($moduleSpec)
+    {
+        var moduleSpec = escapeString($moduleSpec);
+        _.js += _.space + 'from' + _.optSpace + moduleSpec;
+        _.col += _.spaceLength + 4 + _.optSpaceLength + moduleSpec.length;
+    }
+
+    if (semicolons || !settings.semicolonOptional)
+    {
+        _.js += ';';
+        ++_.col;
+    }
 }
 
 
@@ -2815,72 +2970,9 @@ var StmtRawGen = {
         }
     },
 
-    ExportFrom: function generateExportFrom($stmt, settings)
-    {
-        var $exports = $stmt.namedExports,
-            $moduleSpec = $stmt.moduleSpecifier,
-            exportCount = $exports.length;
+    ExportFrom: generateExportFrom,
 
-        if (sourcemap)
-            addMapping($stmt);
-
-        _.js += 'export';
-        _.col += 6;
-
-        if (exportCount)
-        {
-            var prevIndent = shiftIndent(),
-                lastExportIdx = exportCount - 1;
-
-            _.js += _.optSpace + '{';
-            _.col += _.optSpaceLength + 1;
-
-            for (var i = 0; i < exportCount; ++i)
-            {
-                _.js += _.newline + _.indent;
-                _.line += _.newlineNumLines;
-                if (_.newlineResetsCol)
-                    _.col = _.newlineNumCols + _.indent.length;
-                else
-                    _.col += _.newlineNumCols + _.indent.length;
-
-                ExprGen[$exports[i].type]($exports[i], Preset.e5);
-
-                if (i !== lastExportIdx)
-                {
-                    _.js += ',';
-                    ++_.col;
-                }
-            }
-
-            _.indent = prevIndent;
-            
-            _.js += _.newline + _.indent + '}';
-            _.line += _.newlineNumLines;
-            if (_.newlineResetsCol)
-                _.col = _.newlineNumCols + _.indent.length + 1;
-            else
-                _.col += _.newlineNumCols + _.indent.length + 1;
-        }
-        else
-        {
-            _.js += _.optSpace + '{}';
-            _.col += _.optSpaceLength + 2;
-        }
-
-        if ($moduleSpec)
-        {
-            var moduleSpec = escapeString($moduleSpec);
-            _.js += _.space + 'from' + _.optSpace + moduleSpec;
-            _.col += _.spaceLength + 4 + _.optSpaceLength + moduleSpec.length;
-        }
-
-        if (semicolons || !settings.semicolonOptional)
-        {
-            _.js += ';';
-            ++_.col;
-        }
-    },
+    ExportLocals: generateExportFrom,
 
     ExpressionStatement: function generateExpressionStatement($stmt, settings)
     {
@@ -3722,7 +3814,7 @@ var StmtRawGen = {
 };
 
 
-/////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // CodeGen
 
 function exprToJs($expr, settings)
