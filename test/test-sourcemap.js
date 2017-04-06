@@ -14,7 +14,7 @@ var createIt = function(f, method)
 	return function()
 	{
 		var code = Fs.readFileSync(f, 'utf8');
-		var ast = Parser[method](code, { loc: true });
+		var result = Parser[method](code);
 
 		var mappings = [];
 		var map = {
@@ -30,12 +30,14 @@ var createIt = function(f, method)
 			}
 		};
 
-		var generated = CodeGen.generate(ast, { sourcemap: map });
+		var generated = CodeGen.generate(result.tree, { sourcemap: map, locations: result.locations });
 		//Fs.writeFileSync('__generated.js', generated);
 
 		var lines = generated.split('\n');
 
 		var len = mappings.length;
+		len.should.be.above(0);
+
 		for (var i = 0; i < len; i++)
 		{
 			var m = mappings[i];
@@ -70,6 +72,6 @@ var createTest = function(directory, method)
 
 describe('source positions', function()
 {
-	describe('scripts', createTest(dir + 'scripts', 'parseScript'));
-	describe('modules', createTest(dir + 'modules', 'parseModule'));	
+	describe('scripts', createTest(dir + 'scripts', 'parseScriptWithLocation'));
+	describe('modules', createTest(dir + 'modules', 'parseModuleWithLocation'));	
 });

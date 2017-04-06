@@ -60,6 +60,7 @@ var isArray,
     safeConcatenation,
     directive,
     extra,
+    locations,
     sourcemap,
     filename,
     sourcemapLineOffset,
@@ -310,6 +311,7 @@ function getDefaultOptions()
         verbatim: null,
         sourcemap: null,
         filename: '',
+        locations: null,
         sourcemapLineOffset: 0,
         inputSourcemap: null,
         pureSourcemap: null
@@ -469,7 +471,7 @@ function updateDeeply(target, override)
         {
             var val = override[key];
 
-            if (key !== 'sourcemap' && key !== 'inputSourcemap' && key !== 'pureSourcemap' && isHashObject(val))
+            if (key !== 'sourcemap' && key !== 'inputSourcemap' && key !== 'pureSourcemap' && key !== 'locations' && isHashObject(val))
             {
                 if (isHashObject(target[key]))
                     updateDeeply(target[key], val);
@@ -838,12 +840,13 @@ function generateFunction($node)
 
 function addMapping($stmt, name)
 {
-    if (!$stmt.loc)
+    var loc = $stmt.loc || (locations && locations.get($stmt));
+    if (!loc)
         return;
 
-    var source = $stmt.loc.start.source || filename;
-    var origLine = $stmt.loc.start.line;
-    var origColumn = $stmt.loc.start.column;
+    var source = loc.start.source || filename;
+    var origLine = loc.start.line;
+    var origColumn = loc.start.column;
 
     if (pureSourcemap && inputSourcemap)
     {
@@ -3963,7 +3966,8 @@ function generate($node, options)
     semicolons = options.format.semicolons;
     safeConcatenation = options.format.safeConcatenation;
     directive = options.directive;
-    sourcemap = $node.loc ? options.sourcemap : undefined;
+    locations = options.locations || undefined;
+    sourcemap = ($node.loc || locations) ? options.sourcemap : undefined;
     filename = options.filename || 'unnamed.js';
     sourcemapLineOffset = options.sourcemapLineOffset || 0;
     inputSourcemap = options.inputSourcemap || undefined;
