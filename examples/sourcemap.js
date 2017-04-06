@@ -9,12 +9,19 @@ var code =
 	'pi *= 4;\n' +
 	'console.log(pi);';
 
-// remember to parse with the location information flag turned on
-var ast = ShiftParser.parseScript(code, { loc: true });
+// remember to parse with using the "parseScriptWithLocation" function
+var result = ShiftParser.parseScriptWithLocation(code);
 
 // create a source map generator and pass it to the code generator in the options
 var sourcemap = new SourceMap.SourceMapGenerator({ file: 'out.js' });
-var newCode = ShiftEsotope.generate(ast, { sourcemap: sourcemap, filename: 'in.js' });
+var newCode = ShiftEsotope.generate(
+	result.tree,
+	{
+		locations: result.locations,
+		sourcemap: sourcemap,
+		filename: 'in.js'
+	}
+);
 
 console.log(newCode);
 console.log(sourcemap.toString());

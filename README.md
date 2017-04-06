@@ -73,6 +73,11 @@ The options hash recognizes the following properties:
 
 	Defaults to ```null```.
 
+* **locations**
+
+	Location information (a WeakMap mapping AST nodes to location information), as obtained from the result from the ```parseScriptWithLocation``` or ```parseModuleWithLocation``` functions of the Shift parser. If the nodes themselves don't contain any location information, this option needs to be passed to generate a source map. See examples/sourcemap.js.
+	Defaults to ```null```.
+
 * **sourcemap**
 
 	A SourceMapGenerator instance if you want to generate source maps. See examples/sourcemap.js. Defaults to ```null``` (i.e., no source map will be created).
@@ -96,6 +101,11 @@ The options hash recognizes the following properties:
 	coffee file instead of the JavaScript file used for the transformation (which will happen
 	if no input source map is used).
 	Defaults to ```null```, i.e., no input source map will be used.
+
+* **pureSourcemap**
+
+	If provided, and if an inputSourcemap is provided, another "pure" sourcemap will be generated that uses the AST's location information directly, i.e., without chaining the input sourcemap.
+	Defaults to ```null```.
 
 
 ## Test
