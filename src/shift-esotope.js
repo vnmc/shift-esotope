@@ -1,6 +1,6 @@
 /*
- Copyright (C) 2016 Matthias Christen <christen@vanamco.com>
- Copyright (C) 2016 Florian Müller <mueller@vanamco.com>
+ Copyright (C) 2016-2017 Matthias Christen <christen@vanamco.com>
+ Copyright (C) 2016-2017 Florian Müller <mueller@vanamco.com>
  Copyright (C) 2014 Ivan Nikulin <ifaaan@gmail.com>
  Copyright (C) 2012-2014 Yusuke Suzuki <utatane.tea@gmail.com>
  Copyright (C) 2012-2013 Michael Ficarra <escodegen.copyright@michael.ficarra.me>
@@ -61,6 +61,7 @@ var isArray,
     directive,
     extra,
     locations,
+    comments,
     sourcemap,
     filename,
     sourcemapLineOffset,
@@ -829,7 +830,7 @@ function generateFunctionBody($node)
     {
         _.js += adoptionPrefix($body);
         StmtGen[$body.type]($body, Preset.s8);
-    }    
+    }
 }
 
 function generateFunction($node)
@@ -886,6 +887,42 @@ function addMapping($stmt, name)
         original: { line: origLine, column: origColumn },
         name: name || ''
     }, $stmt);
+}
+
+function addComment(comment)
+{
+    // if the comment text contains the substring "*/"
+    // (which isn't followed by an opening comment "/*"),
+    // replace the "*/" by "* /" to avoid problems
+    var commentText = comment.text.replace(/\*\/([^\/][^\*]|\/[^\*]|[^\/]$)/g, '* /$1');
+
+    _.js += '/*' + commentText + '*/';
+
+    if (comment.start.line === comment.end.line)
+        _.col += commentText.length + 4;
+    else
+    {
+        _.line += comment.end.line - comment.start.line;
+        _.col = comment.end.col;
+    }
+}
+
+function addCommentBefore($node)
+{
+    if ($node.commentBefore !== undefined)
+        addComment(comments[$node.commentBefore]);
+}
+
+function addCommentIn($node)
+{
+    if ($node.commentIn !== undefined)
+        addComment(comments[$node.commentIn]);
+}
+
+function addCommentAfter($node)
+{
+    if ($node.commentAfter !== undefined)
+        addComment(comments[$node.commentAfter]);
 }
 
 
@@ -1247,8 +1284,12 @@ var FLOATING_OR_OCTAL_REGEXP = /[.eExX]|^0[0-9]+/,
 
 function generateIdentifierExpression($expr)
 {
+    addCommentBefore($expr);
+
     _.js += $expr.name;
     _.col += $expr.name.length;
+
+    addCommentAfter($expr);
 }
 
 function generateArrayPatternOrExpression($expr)
@@ -1256,6 +1297,8 @@ function generateArrayPatternOrExpression($expr)
     var $elems = $expr.elements,
         elemCount = $elems.length,
         $rest = $expr.restElement || $expr.rest;
+
+    addCommentBefore($expr);
 
     if (elemCount)
     {
@@ -1347,12 +1390,16 @@ function generateArrayPatternOrExpression($expr)
         _.js += '[]';
         _.col += 2;
     }
+
+    addCommentAfter($expr);
 }
 
 function generateObjectBinding($expr)
 {
     var $props = $expr.properties,
         propCount = $props.length;
+
+    addCommentBefore($expr);
 
     if (propCount)
     {
@@ -1438,12 +1485,16 @@ function generateObjectBinding($expr)
         _.js += '{}';
         _.col += 2;
     }
+
+    addCommentAfter($expr);
 }
 
 function generateBindingPropertyIdentifier($expr)
 {
     var $binding = $expr.binding,
         $init = $expr.init;
+
+    addCommentBefore($expr);
 
     ExprGen[$binding.type]($binding, Preset.e5);
 
@@ -1454,6 +1505,8 @@ function generateBindingPropertyIdentifier($expr)
 
         ExprGen[$init.type]($init, Preset.e4);
     }
+
+    addCommentAfter($expr);
 }
 
 function generateBindingPropertyProperty($expr)
@@ -1461,12 +1514,16 @@ function generateBindingPropertyProperty($expr)
     var $name = $expr.name,
         $binding = $expr.binding;
 
+    addCommentBefore($expr);
+
     ExprGen[$name.type]($name, Preset.e5);
 
     _.js += ':' + _.optSpace;
     _.col += 1 + _.optSpaceLength;
 
     ExprGen[$binding.type]($binding, Preset.e4);
+
+    addCommentAfter($expr);
 }
 
 function generateBindingWithDefault($expr)
@@ -1474,12 +1531,16 @@ function generateBindingWithDefault($expr)
     var $left = $expr.binding,
         $right = $expr.init;
 
+    addCommentBefore($expr);
+
     ExprGen[$left.type]($left, Preset.e17);
 
     _.js += _.optSpace + '=' + _.optSpace;
     _.col += _.optSpaceLength + 1 + _.optSpaceLength;
 
     ExprGen[$right.type]($right, Preset.e18);
+
+    addCommentAfter($expr);
 }
 
 function generateStaticMemberExpression($expr, settings)
@@ -1488,6 +1549,8 @@ function generateStaticMemberExpression($expr, settings)
         $prop = $expr.property,
         parenthesize = Precedence.Member < settings.precedence,
         isNumObj = $obj.type === Syntax.LiteralNumericExpression;
+
+    addCommentBefore($expr);
 
     if (parenthesize)
     {
@@ -1528,6 +1591,8 @@ function generateStaticMemberExpression($expr, settings)
         _.js += ')';
         ++_.col;
     }
+
+    addCommentAfter($expr);
 }
 
 function generateComputedMemberExpression($expr, settings)
@@ -1536,6 +1601,8 @@ function generateComputedMemberExpression($expr, settings)
         objType = $obj.type,
         $prop = $expr.expression,
         parenthesize = Precedence.Member < settings.precedence || (objType === Syntax.IdentifierExpression && $obj.name === 'let');
+
+    addCommentBefore($expr);
 
     if (parenthesize)
     {
@@ -1558,6 +1625,8 @@ function generateComputedMemberExpression($expr, settings)
         _.js += ')';
         ++_.col;
     }
+
+    addCommentAfter($expr);
 }
 
 
@@ -1570,6 +1639,8 @@ var ExprRawGen = {
             $right = $expr.expression,
             parenthesize = Precedence.Assignment < settings.precedence,
             allowIn = settings.allowIn || parenthesize;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1587,6 +1658,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     CompoundAssignmentExpression: function generateCompoundAssignmentExpression($expr, settings)
@@ -1595,6 +1668,8 @@ var ExprRawGen = {
             $right = $expr.expression,
             parenthesize = Precedence.Assignment < settings.precedence,
             allowIn = settings.allowIn || parenthesize;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1612,11 +1687,15 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     ArrowExpression: function generateArrowExpression($expr, settings)
     {
         var parenthesize = Precedence.ArrowFunction < settings.precedence;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1631,6 +1710,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     ConditionalExpression: function generateConditionalExpression($expr, settings)
@@ -1642,6 +1723,8 @@ var ExprRawGen = {
             allowIn = settings.allowIn || parenthesize,
             testGenSettings = Preset.e2(allowIn),
             branchGenSettings = Preset.e1(allowIn);
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1665,6 +1748,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     BinaryExpression: function generateBinaryExpression($expr, settings)
@@ -1676,6 +1761,8 @@ var ExprRawGen = {
             operandGenSettings = Preset.e16(precedence, allowIn);
 
         parenthesize |= op === 'in' && !allowIn;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1721,6 +1808,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     CallExpression: function generateCallExpression($expr, settings)
@@ -1730,6 +1819,8 @@ var ExprRawGen = {
             argCount = $args.length,
             lastArgIdx = argCount - 1,
             parenthesize = !settings.allowCall || Precedence.Call < settings.precedence;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1762,6 +1853,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     NewExpression: function generateNewExpression($expr, settings)
@@ -1772,6 +1865,8 @@ var ExprRawGen = {
             argCount = $args.length,
             lastArgIdx = argCount - 1,
             withCall = !settings.allowUnparenthesizedNew || parentheses || argCount > 0;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1809,12 +1904,18 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     NewTargetExpression: function generateNewTargetExpression($expr, settings)
     {
+        addCommentBefore($expr);
+
         _.js += 'new.target';
         _.col += 10;
+
+        addCommentAfter($expr);
     },
 
     StaticMemberExpression: generateStaticMemberExpression,
@@ -1830,6 +1931,8 @@ var ExprRawGen = {
         var oldLine = _.line,
             parenthesize = Precedence.Unary < settings.precedence,
             op = $expr.operator;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1870,6 +1973,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     YieldExpression: function generateYieldExpression($expr, settings)
@@ -1877,6 +1982,8 @@ var ExprRawGen = {
         var oldLine = _.line,
             $arg = $expr.expression,
             parenthesize = Precedence.Yield < settings.precedence;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1892,6 +1999,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     YieldGeneratorExpression: function generateYieldGeneratorExpression($expr, settings)
@@ -1899,6 +2008,8 @@ var ExprRawGen = {
         var oldLine = _.line,
             $arg = $expr.expression,
             parenthesize = Precedence.Yield < settings.precedence;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1914,6 +2025,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     UpdateExpression: function generateUpdateExpression($expr, settings)
@@ -1923,6 +2036,8 @@ var ExprRawGen = {
             prefix = $expr.isPrefix,
             precedence = prefix ? Precedence.Unary : Precedence.Postfix,
             parenthesize = precedence < settings.precedence;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -1950,12 +2065,16 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     },
 
     FunctionExpression: function generateFunctionExpression($expr)
     {
         var $name = $expr.name,
             isGenerator = $expr.isGenerator;
+
+        addCommentBefore($expr);
 
         _.js += isGenerator ? 'function*' : 'function';
 
@@ -1971,6 +2090,8 @@ var ExprRawGen = {
         }
 
         generateFunction($expr);
+
+        addCommentAfter($expr);
     },
 
     ArrayBinding: generateArrayPatternOrExpression,
@@ -1981,6 +2102,8 @@ var ExprRawGen = {
 
     ClassExpression: function generateClassExpression($expr)
     {
+        addCommentBefore($expr);
+
         var oldLine = _.line,
             $id = $expr.name,
             $super = $expr.super,
@@ -2044,11 +2167,15 @@ var ExprRawGen = {
             _.js += '{}';
             _.col += 2;
         }
+
+        addCommentAfter($expr);
     },
 
     ClassElement: function generateClassElement($expr)
     {
         var $method = $expr.method;
+
+        addCommentBefore($expr);
 
         if ($expr.isStatic)
         {
@@ -2057,16 +2184,24 @@ var ExprRawGen = {
         }
 
         ExprGen[$method.type]($method);
+
+        addCommentAfter($expr);
     },
 
     Super: function generateSuper($expr)
     {
+        addCommentBefore($expr);
+
         _.js += 'super';
         _.col += 5;
+
+        addCommentAfter($expr);
     },
 
     ComputedPropertyName: function generateComputedPropertyName($expr)
     {
+        addCommentBefore($expr);
+
         _.js += '[';
         ++_.col;
 
@@ -2074,6 +2209,8 @@ var ExprRawGen = {
 
         _.js += ']';
         ++_.col;
+
+        addCommentAfter($expr);
     },
 
     StaticPropertyName: function generateStaticPropertyName($expr)
@@ -2083,12 +2220,18 @@ var ExprRawGen = {
         if (!isUnquotedPropertyName(value))
             value = escapeString(value);
 
+        addCommentBefore($expr);
+
         _.js += value;
         _.col += value.length;
+
+        addCommentAfter($expr);
     },
 
     Method: function generateMethod($expr)
     {
+        addCommentBefore($expr);
+
         if ($expr.isGenerator)
         {
             _.js += '*';
@@ -2096,12 +2239,15 @@ var ExprRawGen = {
         }
 
         ExprGen[$expr.name.type]($expr.name, Preset.e5);
-
         generateFunction($expr);
+
+        addCommentAfter($expr);
     },
 
     Getter: function generateGetter($expr)
     {
+        addCommentBefore($expr);
+
         _.js += 'get' + _.space;
         _.col += 3 + _.spaceLength;
 
@@ -2111,12 +2257,16 @@ var ExprRawGen = {
         _.col += 2;
 
         generateFunctionBody($expr);
+
+        addCommentAfter($expr);
     },
 
     Setter: function generateSetter($expr)
     {
         var $name = $expr.name,
             $param = $expr.param;
+
+        addCommentBefore($expr);
 
         _.js += 'set' + _.space;
         _.col += 3 + _.spaceLength;
@@ -2138,6 +2288,8 @@ var ExprRawGen = {
         ++_.col;
 
         generateFunctionBody($expr);
+
+        addCommentAfter($expr);
     },
 
     DataProperty: function generateDataProperty($expr)
@@ -2145,17 +2297,23 @@ var ExprRawGen = {
         var $name = $expr.name,
             $val = $expr.expression;
 
+        addCommentBefore($expr);
+
         ExprGen[$name.type]($name, Preset.e5);
 
         _.js += ':' + _.optSpace;
         _.col += 1 + _.optSpaceLength;
 
         ExprGen[$val.type]($val, Preset.e4);
+
+        addCommentAfter($expr);
     },
 
     ShorthandProperty: function generateShorthandProperty($expr)
     {
         var $name = $expr.name;
+
+        addCommentBefore($expr);
 
         if ($name.type !== undefined)
             ExprGen[$name.type]($name, Preset.e5);
@@ -2164,12 +2322,16 @@ var ExprRawGen = {
             _.js += $name;
             _.col += $name.length;
         }
+
+        addCommentAfter($expr);
     },
 
     ObjectExpression: function generateObjectExpression($expr)
     {
         var $props = $expr.properties,
             propCount = $props.length;
+
+        addCommentBefore($expr);
 
         if (propCount)
         {
@@ -2213,16 +2375,22 @@ var ExprRawGen = {
             _.js += '{}';
             _.col += 2;
         }
+
+        addCommentAfter($expr);
     },
 
     ObjectBinding: generateObjectBinding,
 
     ObjectAssignmentTarget: generateObjectBinding,
 
-    ThisExpression: function generateThisExpression()
+    ThisExpression: function generateThisExpression($expr)
     {
+        addCommentBefore($expr);
+
         _.js += 'this';
         _.col += 4;
+
+        addCommentAfter($expr);
     },
 
     IdentifierExpression: generateIdentifierExpression,
@@ -2247,6 +2415,8 @@ var ExprRawGen = {
     {
         var $name = $expr.name;
 
+        addCommentBefore($expr);
+
         if ($name)
         {
             _.js += $name + _.space + 'as' + _.space + $expr.exportedName;
@@ -2257,11 +2427,15 @@ var ExprRawGen = {
             _.js += $expr.exportedName;
             _.col += $expr.exportedName.length;
         }
+
+        addCommentAfter($expr);
     },
 
     ExportFromSpecifier: function generateExportFromSpecifier($expr)
     {
         var $name = $expr.name;
+
+        addCommentBefore($expr);
 
         if ($expr.exportedName)
         {
@@ -2273,11 +2447,15 @@ var ExprRawGen = {
             _.js += $name;
             _.col += $name.length;
         }
+
+        addCommentAfter($expr);
     },
 
     ExportLocalSpecifier: function genereateExportLocalSpecifier($expr)
     {
         var $name = $expr.name;
+
+        addCommentBefore($expr);
 
         ExprGen[$name.type]($name, Preset.e5);
 
@@ -2286,11 +2464,15 @@ var ExprRawGen = {
             _.js += _.space + 'as' + _.space + $expr.exportedName;
             _.col += _.spaceLength + 2 + _.spaceLength + $expr.exportedName.length;
         }
+
+        addCommentAfter($expr);
     },
 
     ImportSpecifier: function generateImportSpecifier($expr)
     {
         var $name = $expr.name;
+
+        addCommentBefore($expr);
 
         if ($name)
         {
@@ -2302,12 +2484,18 @@ var ExprRawGen = {
             _.js += $expr.binding.name;
             _.col += $expr.binding.name.length;
         }
+
+        addCommentAfter($expr);
     },
 
     LiteralBooleanExpression: function generateBooleanLiteral($expr)
     {
+        addCommentBefore($expr);
+
         _.js += $expr.value ? 'true' : 'false';
         _.col += $expr.value ? 4 : 5;
+
+        addCommentAfter($expr);
     },
 
     LiteralNumericExpression: function generateNumericLiteral($expr)
@@ -2318,6 +2506,8 @@ var ExprRawGen = {
             temp,
             exponent,
             pos;
+
+        addCommentBefore($expr);
 
         if (value === 1 / 0)
         {
@@ -2380,13 +2570,19 @@ var ExprRawGen = {
 
         _.js += result;
         _.col += result.length;
+
+        addCommentAfter($expr);
     },
 
     LiteralStringExpression: function generateStringLiteral($expr)
     {
+        addCommentBefore($expr);
+
         var s = escapeString($expr.value);
         _.js += s;
         _.col += s.length;
+
+        addCommentAfter($expr);
     },
 
     LiteralRegExpExpression: function generateRegExpLiteral($expr)
@@ -2407,31 +2603,47 @@ var ExprRawGen = {
                 flags += 'u';
         }
 
+        addCommentBefore($expr);
+
         _.js += '/' + $expr.pattern + '/' + flags;
         _.col += 2 + $expr.pattern.length + flags.length;
+
+        addCommentAfter($expr);
     },
 
     LiteralInfinityExpression: function generateInfinityLiteral($expr)
     {
+        addCommentBefore($expr);
+
         //_.js += 'Infinity';
         _.js += '2e308';
         _.col += 5;
+
+        addCommentAfter($expr);
     },
 
     LiteralNullExpression: function generateNullLiteral($expr)
     {
+        addCommentBefore($expr);
+
         _.js += 'null';
         _.col += 4;
+
+        addCommentAfter($expr);
     },
 
     SpreadElement: function generateSpreadElement($expr)
     {
         var $arg = $expr.expression;
 
+        addCommentBefore($expr);
+
         _.js += '...';
         _.col += 3;
 
         ExprGen[$arg.type]($arg, Preset.e4);
+
+        addCommentAfter($expr);
     },
 
     TemplateExpression: function generateTemplateExpression($expr, settings)
@@ -2440,6 +2652,8 @@ var ExprRawGen = {
             $elements = $expr.elements,
             elementCount = $elements.length,
             parenthesize = Precedence.TaggedTemplate < settings.precedence;
+
+        addCommentBefore($expr);
 
         if (parenthesize)
         {
@@ -2482,6 +2696,8 @@ var ExprRawGen = {
             _.js += ')';
             ++_.col;
         }
+
+        addCommentAfter($expr);
     }
 };
 
@@ -2506,6 +2722,8 @@ function generateForStatementIterator($op, $stmt, settings)
 
     if (sourcemap)
         addMapping($stmt);
+
+    addCommentBefore($stmt);
 
     _.col += 4 + _.optSpaceLength;
 
@@ -2532,6 +2750,8 @@ function generateForStatementIterator($op, $stmt, settings)
     _.js += stmtJs + adoptionPrefix($body);
 
     StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
+
+    addCommentAfter($stmt);
 }
 
 function generateExportFrom($stmt, settings)
@@ -2542,6 +2762,8 @@ function generateExportFrom($stmt, settings)
 
     if (sourcemap)
         addMapping($stmt);
+
+    addCommentBefore($stmt);
 
     _.js += 'export';
     _.col += 6;
@@ -2599,6 +2821,8 @@ function generateExportFrom($stmt, settings)
         _.js += ';';
         ++_.col;
     }
+
+    addCommentAfter($stmt);
 }
 
 
@@ -2615,6 +2839,8 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
+
         _.js += '{' + _.newline;
         _.line += _.newlineNumLines;
         if (_.newlineResetsCol)
@@ -2628,8 +2854,13 @@ var StmtRawGen = {
         // do that.
         if (settings.functionBody && !$body.length)
         {
-            _.js += '/**/';
-            _.col += 4;
+            if ($stmt.commentIn !== undefined)
+                addCommentIn($stmt);
+            else
+            {
+                _.js += '/**/';
+                _.col += 4;
+            }
         }
 
         for (var i = 0; i < len; ++i)
@@ -2652,6 +2883,8 @@ var StmtRawGen = {
         _.indent = prevIndent;
         _.js += _.indent + '}';
         _.col += _.indent.length + 1;
+
+        addCommentAfter($stmt);
     },
 
     BlockStatement: function generateBlockStatement($stmt, settings)
@@ -2661,7 +2894,9 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
         StmtGen[$block.type]($block, settings);
+        addCommentAfter($stmt);
     },
 
     FunctionBody: function generateFunctionBody($stmt, settings)
@@ -2672,6 +2907,8 @@ var StmtRawGen = {
             lenDirectives = ($directives && $directives.length) || 0,
             lastIdx = len - 1,
             prevIndent = shiftIndent();
+
+        addCommentBefore($stmt);
 
         _.js += '{' + _.newline;
         _.line += _.newlineNumLines;
@@ -2692,8 +2929,13 @@ var StmtRawGen = {
         // do that.
         if (settings.functionBody && !$body.length)
         {
-            _.js += '/**/';
-            _.col += 4;
+            if ($stmt.commentIn !== undefined)
+                addCommentIn($stmt);
+            else
+            {
+                _.js += '/**/';
+                _.col += 4;
+            }
         }
 
         for (var i = 0; i < len; ++i)
@@ -2716,12 +2958,16 @@ var StmtRawGen = {
         _.indent = prevIndent;
         _.js += _.indent + '}';
         _.col += _.indent.length + 1;
+
+        addCommentAfter($stmt);
     },
 
     BreakStatement: function generateBreakStatement($stmt, settings)
     {
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         if ($stmt.label)
         {
@@ -2739,12 +2985,16 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     ContinueStatement: function generateContinueStatement($stmt, settings)
     {
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         if ($stmt.label)
         {
@@ -2762,6 +3012,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     ClassDeclaration: function generateClassDeclaration($stmt)
@@ -2778,6 +3030,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.col += 5;
         if (isNotDefault)
@@ -2835,6 +3089,8 @@ var StmtRawGen = {
             else
                 _.col += _.newlineNumCols + _.indent.length + 1;
         }
+
+        addCommentAfter($stmt);
     },
 
     Directive: function generateDirective($stmt, settings)
@@ -2844,6 +3100,8 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
+
         _.js += directive;
         _.col += directive.length;
 
@@ -2852,6 +3110,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     DoWhileStatement: function generateDoWhileStatement($stmt, settings)
@@ -2862,6 +3122,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         // NOTE: Because `do 42 while (cond)` is Syntax Error. We need semicolon.
         _.col += 2;
@@ -2879,6 +3141,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     CatchClause: function generateCatchClause($stmt)
@@ -2889,6 +3153,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'catch' + _.optSpace + '(';
         _.col += 6 + _.optSpaceLength;
@@ -2901,12 +3167,16 @@ var StmtRawGen = {
         _.js += ')' + adoptionPrefix($body);
 
         StmtGen[$body.type]($body, Preset.s7);
+
+        addCommentAfter($stmt);
     },
 
     DebuggerStatement: function generateDebuggerStatement($stmt, settings)
     {
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'debugger';
         _.col += 8;
@@ -2916,12 +3186,18 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
-    EmptyStatement: function generateEmptyStatement()
+    EmptyStatement: function generateEmptyStatement($stmt)
     {
+        addCommentBefore($stmt);
+
         _.js += ';';
         ++_.col;
+
+        addCommentAfter($stmt);
     },
 
     Export: function generateExport($stmt, settings)
@@ -2929,16 +3205,22 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
+
         _.js += 'export ';
         _.col += 7;
 
         StmtGen[$stmt.declaration.type]($stmt.declaration, Preset.s4(!semicolons && settings.semicolonOptional));
+
+        addCommentAfter($stmt);
     },
 
     ExportAllFrom: function generateExportAllFrom($stmt, settings)
     {
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         var js = 'export * from ' + escapeString($stmt.moduleSpecifier);
         _.js += js;
@@ -2949,12 +3231,16 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     ExportDefault: function generateExportDefault($stmt, settings)
     {
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'export default ';
         _.col += 15;
@@ -2971,6 +3257,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     ExportFrom: generateExportFrom,
@@ -2981,6 +3269,8 @@ var StmtRawGen = {
     {
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         var oldLine = _.line,
             exprJs = exprToJs($stmt.expression, Preset.e5),
@@ -3013,6 +3303,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     Import: function generateImport($stmt, settings)
@@ -3023,6 +3315,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'import';
         _.col += 6;
@@ -3113,6 +3407,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     ImportNamespace: function generateImportNamespace($stmt, settings)
@@ -3122,6 +3418,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'import';
         _.col += 6;
@@ -3141,6 +3439,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     VariableDeclarator: function generateVariableDeclarator($stmt, settings)
@@ -3148,6 +3448,8 @@ var StmtRawGen = {
         var $binding = $stmt.binding,
             $init = $stmt.init,
             genSettings = Preset.e1(settings.allowIn);
+
+        addCommentBefore($stmt);
 
         if ($init)
         {
@@ -3168,6 +3470,8 @@ var StmtRawGen = {
             else
                 ExprGen[$binding.type]($binding, genSettings);
         }
+
+        addCommentAfter($stmt);
     },
 
     VariableDeclaration: function generateVariableDeclaration($stmt, settings)
@@ -3179,6 +3483,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += $stmt.kind;
         _.col += $stmt.kind.length;
@@ -3200,6 +3506,8 @@ var StmtRawGen = {
         }
 
         _.indent = prevIndent;
+
+        addCommentAfter($stmt);
     },
 
     VariableDeclarationStatement: function generateVariableDeclarationStatement($stmt, settings)
@@ -3209,13 +3517,17 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
         StmtGen[$decl.type]($decl, settings);
+        addCommentAfter($stmt);
     },
 
     ThrowStatement: function generateThrowStatement($stmt, settings)
     {
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         var oldLine = _.line;
 
@@ -3227,6 +3539,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     TryCatchStatement: function generateTryCatchStatement($stmt)
@@ -3237,12 +3551,16 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
+
         _.col += 3;
         _.js += join(
             'try' + adoptionPrefix($block) + stmtToJs($block, Preset.s7) + adoptionSuffix($block),
             stmtToJs($stmt.catchClause, Preset.s7),
             oldLine
         );
+
+        addCommentAfter($stmt);
     },
 
     TryFinallyStatement: function generateTryFinallyStatement($stmt)
@@ -3254,6 +3572,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.col += 3;
         var stmtJs = 'try' + adoptionPrefix($block) + stmtToJs($block, Preset.s7) + adoptionSuffix($block);
@@ -3271,6 +3591,8 @@ var StmtRawGen = {
         stmtJs += stmtToJs($finalizer, Preset.s7);
 
         _.js += stmtJs;
+
+        addCommentAfter($stmt);
     },
 
     SwitchStatement: function generateSwitchStatement($stmt)
@@ -3281,6 +3603,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'switch' + _.optSpace + '(';
         _.col += 7 + _.optSpaceLength;
@@ -3320,6 +3644,8 @@ var StmtRawGen = {
         }
 
         _.js += _.indent + '}';
+
+        addCommentAfter($stmt);
     },
 
     SwitchStatementWithDefault: function generateSwitchStatementWithDefault($stmt)
@@ -3332,6 +3658,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'switch' + _.optSpace + '(';
         _.col += 7 + _.optSpaceLength;
@@ -3409,6 +3737,8 @@ var StmtRawGen = {
 
         _.js += _.indent + '}';
         _.col += _.indent.length + 1;
+
+        addCommentAfter($stmt);
     },
 
     SwitchCase: function generateSwitchCase($stmt, settings)
@@ -3425,6 +3755,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.col += 4;
         _.js += join('case', exprToJs($test, Preset.e5), oldLine) + ':';
@@ -3453,6 +3785,8 @@ var StmtRawGen = {
         }
 
         _.indent = prevIndent;
+
+        addCommentAfter($stmt);
     },
 
     SwitchDefault: function generateSwithDefault($stmt, settings)
@@ -3467,6 +3801,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'default:';
         _.col += 8;
@@ -3494,6 +3830,8 @@ var StmtRawGen = {
         }
 
         _.indent = prevIndent;
+
+        addCommentAfter($stmt);
     },
 
     IfStatement: function generateIfStatement($stmt, settings)
@@ -3505,6 +3843,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'if' + _.optSpace + '(';
         _.col += 3 + _.optSpaceLength;
@@ -3544,6 +3884,8 @@ var StmtRawGen = {
         }
         else
             StmtGen[$conseq.type]($conseq, Preset.s4(semicolonOptional));
+
+        addCommentAfter($stmt);
     },
 
     ForStatement: function generateForStatement($stmt, settings)
@@ -3557,6 +3899,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'for' + _.optSpace + '(';
         _.col += 4 + _.optSpaceLength;
@@ -3605,6 +3949,8 @@ var StmtRawGen = {
         _.js += adoptionPrefix($body);
 
         StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
+
+        addCommentAfter($stmt);
     },
 
     ForInStatement: function generateForInStatement($stmt, settings)
@@ -3626,6 +3972,8 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
+
         _.col += $stmt.label.length + 1;
         _.js += $stmt.label + ':' + adoptionPrefix($body);
 
@@ -3635,6 +3983,8 @@ var StmtRawGen = {
         StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
 
         _.indent = prevIndent;
+
+        addCommentAfter($stmt);
     },
 
     Module: function generateModule($stmt)
@@ -3644,6 +3994,8 @@ var StmtRawGen = {
             len = $items.length,
             lenDirectives = ($directives && $directives.length) || 0,
             lastIdx = len - 1;
+
+        addCommentBefore($stmt);
 
         if (safeConcatenation && (len > 0 || lenDirectives > 0))
         {
@@ -3677,6 +4029,8 @@ var StmtRawGen = {
                     _.col += _.newlineNumCols;
             }
         }
+
+        addCommentAfter($stmt);
     },    
 
     Script: function generateScript($stmt)
@@ -3686,6 +4040,8 @@ var StmtRawGen = {
             len = $body.length,
             lenDirectives = ($directives && $directives.length) || 0,
             lastIdx = len - 1;
+
+        addCommentBefore($stmt);
 
         if (safeConcatenation && (len > 0 || lenDirectives > 0))
         {
@@ -3699,6 +4055,9 @@ var StmtRawGen = {
             var $directive = $directives[i];
             StmtGen[$directive.type]($directive);
         }
+
+        if (len === 0)
+            addCommentIn($stmt);
 
         for (var i = 0; i < len; ++i)
         {
@@ -3719,6 +4078,8 @@ var StmtRawGen = {
                     _.col += _.newlineNumCols;
             }
         }
+
+        addCommentAfter($stmt);
     },
 
     FunctionDeclaration: function generateFunctionDeclaration($stmt)
@@ -3728,6 +4089,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += isGenerator ? ('function*' + _.optSpace) : ('function' + _.space);
         _.col += isGenerator ? (9 + _.optSpaceLength) : (8 + _.spaceLength);
@@ -3748,6 +4111,8 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
+
         if ($arg)
         {
             var oldLine = _.line;
@@ -3766,6 +4131,8 @@ var StmtRawGen = {
             _.js += ';';
             ++_.col;
         }
+
+        addCommentAfter($stmt);
     },
 
     WhileStatement: function generateWhileStatement($stmt, settings)
@@ -3778,6 +4145,8 @@ var StmtRawGen = {
         if (sourcemap)
             addMapping($stmt);
 
+        addCommentBefore($stmt);
+
         _.js += 'while' + _.optSpace + '(';
         _.col += 6 + _.optSpaceLength;
 
@@ -3789,6 +4158,8 @@ var StmtRawGen = {
 
         _.js += adoptionPrefix($body);
         StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
+
+        addCommentAfter($stmt);
     },
 
     WithStatement: function generateWithStatement($stmt, settings)
@@ -3800,6 +4171,8 @@ var StmtRawGen = {
 
         if (sourcemap)
             addMapping($stmt);
+
+        addCommentBefore($stmt);
 
         _.js += 'with' + _.optSpace + '(';
         _.col += 5 + _.optSpaceLength;
@@ -3813,6 +4186,8 @@ var StmtRawGen = {
         _.js += adoptionPrefix($body);
 
         StmtGen[$body.type]($body, Preset.s4(bodySemicolonOptional));
+
+        addCommentAfter($stmt);
     }
 };
 
@@ -3888,6 +4263,10 @@ var _ = {
     js: '',
     line: 0,
     col: 0,
+
+    commentIdx: null,
+    prevCommentNode: null,
+
     newline: '\n',
     optSpace: ' ',
     space: ' ',
@@ -3905,6 +4284,206 @@ var _ = {
 // Generators
 var ExprGen = undefined,
     StmtGen = StmtRawGen;
+
+
+function findCodeCoveredRanges($node, locations, ranges)
+{
+    var loc = locations.get($node);
+    if (!loc)
+        return;
+
+    var isLeaf = true;
+    for (var k in $node)
+    {
+        var $n = $node[k];
+        if (!$n)
+            continue;
+
+        if (Array.isArray($n))
+        {
+            var len = $n.length;
+            for (var i = 0; i < len; i++)
+            {
+                if ($n[i].type)
+                {
+                    findCodeCoveredRanges($n[i], locations, ranges);
+                    isLeaf = false;
+                }
+            }
+        }
+        else if ($n.type)
+        {
+            findCodeCoveredRanges($n, locations, ranges);
+            isLeaf = false;
+        }
+    }
+
+    if (isLeaf)
+        ranges.push([ loc.start.offset, loc.end.offset ]);
+}
+
+function isNotInCoveredRange(ranges, start, end, options)
+{
+    var len = ranges.length;
+    var isNotInRange = false;
+    var prevRange = null;
+
+    for (var i = (options && options.startSearchIdx) || 0; i < len; i++)
+    {
+        var range = ranges[i];
+
+        if ((prevRange === null || prevRange[1] <= start) && end <= range[0])
+        {
+            isNotInRange = true;
+            break;
+        }
+
+        if (range[0] > end)
+            break;
+
+        prevRange = range;
+    }
+
+    if (options)
+        options.startSearchIdx = i;
+
+    return isNotInRange;
+}
+
+function collapseComments($node, locations, comments)
+{
+    if (!comments || !comments[0])
+        return [];
+    if (!comments[1])
+        return [ comments[0] ];
+
+    var ranges = [];
+    findCodeCoveredRanges($node, locations, ranges);
+
+    var ret = [];
+    var prevComment = null;
+
+    var findRangeOptions = {
+        startSearchIdx: 0
+    };
+
+    for (var i = 0; ; i++)
+    {
+        var comment = comments[i];
+        if (!comment)
+            break;
+
+        if (prevComment && isNotInCoveredRange(ranges, prevComment.end.offset, comment.start.offset, findRangeOptions))
+        {
+            // no code between the end of the previous comment and the start of the current one:
+            // collapse the previous comment and the current one
+            prevComment.text += '*//*' + comment.text;
+            prevComment.end.offset = comment.end.offset;
+        }
+        else
+        {
+            ret.push(comment);
+            prevComment = comment;
+        }
+    }
+
+    return ret;
+}
+
+function assignComments($node, locations, comments, parentStart, parentEnd, level)
+{
+    if (_.commentIdx === null)
+        return;
+
+    var loc = locations.get($node);
+    if (!loc)
+        return;
+
+    if (!level)
+        level = 0;
+
+    var start = loc.start.offset;
+    var end = loc.end.offset;
+    var commentStart = comments[_.commentIdx].start.offset;
+
+    // if there is a comment between the start of the parent and the start of this node,
+    // set it as *before* this node
+    if (parentStart <= commentStart && commentStart <= start)
+    {
+        if (_.prevCommentNode)
+            _.prevCommentNode.commentAfter = undefined;
+        $node.commentBefore = _.commentIdx;
+        _.prevCommentNode = $node;
+    }
+
+    // if the start of this node is beyond the comment start, switch to the next comment
+    if (level > 0 && start >= commentStart)
+    {
+        ++_.commentIdx;
+        if (_.commentIdx >= comments.length)
+            _.commentIdx = null;
+    }
+
+    // recursively assign comments to the children of this node
+    var isLeaf = true;
+    for (var k in $node)
+    {
+        var $n = $node[k];
+        if (!$n)
+            continue;
+
+        if (Array.isArray($n))
+        {
+            var len = $n.length;
+            for (var i = 0; i < len; i++)
+            {
+                if ($n[i].type)
+                {
+                    assignComments($n[i], locations, comments, start, end, level+1);
+                    isLeaf = false;
+                }
+            }
+        }
+        else if ($n.type)
+        {
+            assignComments($n, locations, comments, start, end, level+1);
+            isLeaf = false;
+        }
+    }
+
+    // if this node is a leaf and there is a comment between the node's start and end,
+    // set the comment as *in* the node
+    if (isLeaf && _.commentIdx !== null && start <= comments[_.commentIdx].start.offset && comments[_.commentIdx].end.offset <= end)
+    {
+        if (_.prevCommentNode)
+            _.prevCommentNode.commentAfter = undefined;
+        $node.commentIn = _.commentIdx;
+        _.prevCommentNode = $node;
+    }
+
+    // if the end of this node is beyond the comment's end, switch to the next comment
+    if (_.commentIdx !== null && end > comments[_.commentIdx].end.offset)
+    {
+        ++_.commentIdx;
+        _.prevCommentNode = null;
+        if (_.commentIdx >= comments.length)
+            _.commentIdx = null;
+    }
+
+    // if there is a comment between the end of this node and the end of the parent,
+    // set it as *after* this node
+    if (_.commentIdx !== null)
+    {
+        var commentStart = comments[_.commentIdx].start.offset;
+        if (end <= commentStart && commentStart <= parentEnd)
+        {
+            if (_.prevCommentNode)
+                _.prevCommentNode.commentAfter = undefined;
+            $node.commentAfter = _.commentIdx;
+            _.prevCommentNode = $node;
+        }
+    }
+}
 
 
 function generate($node, options)
@@ -3967,12 +4546,22 @@ function generate($node, options)
     safeConcatenation = options.format.safeConcatenation;
     directive = options.directive;
     locations = options.locations || undefined;
+    comments = undefined;
     sourcemap = ($node.loc || locations) ? options.sourcemap : undefined;
     filename = options.filename || 'unnamed.js';
     sourcemapLineOffset = options.sourcemapLineOffset || 0;
     inputSourcemap = options.inputSourcemap || undefined;
     pureSourcemap = options.pureSourcemap || undefined;
     extra = options;
+
+    // assign comments to AST nodes if comments and locations are defined in the options
+    if (locations && options.comments)
+    {
+        comments = collapseComments($node, locations, options.comments);
+        _.commentIdx = comments && comments.length > 0 ? 0 : null;
+        _.prevCommentNode = null;
+        assignComments($node, locations, comments);
+    }
 
     if (extra.verbatim)
         ExprGen = createExprGenWithExtras();
@@ -3983,5 +4572,9 @@ function generate($node, options)
 }
 
 module.exports.generate = generate;
+module.exports.assignComments = assignComments;
+module.exports.findCodeCoveredRanges = findCodeCoveredRanges;
+module.exports.isNotInCoveredRange = isNotInCoveredRange;
+module.exports.collapseComments = collapseComments;
 
 })();

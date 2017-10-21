@@ -11,7 +11,7 @@ According to our benchmarks, ```shift-esotope``` is around 8 times faster than t
 
 ```shift-esotope``` also supports generation of source maps via Mozilla's [source map package](https://github.com/mozilla/source-map). The "examples" folder contains an example how to generate source maps.
 
-```shift-esotope``` doesn't support generation of comments.
+```shift-esotope``` support generation of comments by passing in a comments data structure via the options (see the "Options" section below).
 
 ## Installation
 ### node.js
@@ -77,6 +77,21 @@ The options hash recognizes the following properties:
 
 	Location information (a WeakMap mapping AST nodes to location information), as obtained from the result from the ```parseScriptWithLocation``` or ```parseModuleWithLocation``` functions of the Shift parser. If the nodes themselves don't contain any location information, this option needs to be passed to generate a source map. See examples/sourcemap.js.
 	Defaults to ```null```.
+
+* **comments**
+
+	When specifying a "comments" property obtained from the Shift parser's return value "comments" property when using ```parseScriptWithLocation``` or ```parseModuleWithLocation```, the code generator tries to restore the comments at the locations specified in the comments data structure.
+	The comments structure is expected to be an array of objects in the following format:
+
+	```
+	comment: {
+		text: string;
+		start: { offset: number; };
+		end: { offset: number; }
+	}
+	```
+
+	Defaults to ```null``` (no comments will be generated).
 
 * **sourcemap**
 

@@ -34,15 +34,40 @@ var removeEmptyStatements = function(node)
 	}
 };
 
-var createIt = function(f, method)
+var createIt = function(f, method, withComments)
 {
 	return function()
 	{
 		var code = Fs.readFileSync(f, 'utf8');
 
-		var ast = Parser[method](code);
+		var ast = null;
+		var options = undefined;
+		var numComments = 0;
 
-		var generated = CodeGen.generate(ast);
+		var removeCommentIndices = function(key, value)
+		{
+			if ([ 'commentBefore', 'commentIn', 'commentAfter' ].indexOf(key) >= 0)
+			{
+				numComments++;
+				return undefined;
+			}
+			
+			return value;
+		};
+
+		if (withComments)
+		{
+			var ret = Parser[method + 'WithLocation'](code);
+			ast = ret.tree;
+			options = {
+				locations: ret.locations,
+				comments: ret.comments
+			};
+		}
+		else
+			ast = Parser[method](code);
+
+		var generated = CodeGen.generate(ast, options);
 		//Fs.writeFileSync('__generated.js', generated);
 
 		var ast2 = Parser[method](generated);
@@ -50,7 +75,7 @@ var createIt = function(f, method)
 		removeEmptyStatements(ast);
 		removeEmptyStatements(ast2);
 
-		var json1 = JSON.stringify(ast);
+		var json1 = JSON.stringify(ast, withComments ? removeCommentIndices : undefined);
 		var json2 = JSON.stringify(ast2);
 
 		//Fs.writeFileSync('__orig.ast', Util.inspect(ast, { depth: null }));
@@ -58,6 +83,14 @@ var createIt = function(f, method)
 
 		//ast2.should.eql(ast);
 		json2.should.eql(json1);
+
+		if (withComments)
+		{
+			if (options.comments[0] !== undefined)
+				numComments.should.be.greaterThan(0);
+			else
+				numComments.should.eql(0);
+		}
 	}
 };
 
@@ -72,7 +105,10 @@ var createTest = function(directory, method)
 		{
 			var f = files[i];
 			if (/\.js$/.test(f))
-				it(f, createIt(Path.join(directory, f), method));
+			{
+				it(f, createIt(Path.join(directory, f), method, false));
+				it(f + ' (with comments)', createIt(Path.join(directory, f), method, true));
+			}
 		}
 	};
 }
