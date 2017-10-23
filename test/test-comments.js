@@ -37,6 +37,50 @@ var cg = function(code)
 	);
 };
 
+var removeLoc = function(node, oldLocations, newLocations, removeLocationsFromTypes)
+{
+	if (removeLocationsFromTypes.indexOf(node.type) < 0)
+		newLocations.set(node, oldLocations.get(node));
+
+	for (var k in node)
+    {
+        var n = node[k];
+        if (!n)
+            continue;
+
+        if (Array.isArray(n))
+        {
+            var len = n.length;
+            for (var i = 0; i < len; i++)
+            {
+                if (n[i].type)
+                    removeLoc(n[i], oldLocations, newLocations, removeLocationsFromTypes);
+            }
+        }
+        else if (n.type)
+            removeLoc(n, oldLocations, newLocations, removeLocationsFromTypes);
+    }
+}
+
+var cgRemoveLoc = function(code, removeLocationsFromTypes)
+{
+	var ret = Parser.parseScriptWithLocation(code);
+	var locations = new WeakMap();
+	removeLoc(ret.tree, ret.locations, locations, removeLocationsFromTypes);
+
+	return CodeGen.generate(
+		ret.tree,
+		{
+			locations: locations,
+			comments: ret.comments,
+			format: {
+				compact: true,
+				quotes: 'double'
+			}
+		}
+	);
+}
+
 
 describe('findCodeCoveredRanges', function()
 {
@@ -218,5 +262,10 @@ describe('Comments', function()
 	it('multiple subsequent comments with spaces', function()
 	{
 		cg('print("a"); /*magic*/ /*value*/   /* wow! */ print("b"); /*X*/ print("c");').should.eql('print("a");/*magic*//*value*//* wow! */print("b");/*X*/print("c");');
+	});
+
+	it('should generate comments when location information absent for ArrayExpression', function()
+	{
+		cgRemoveLoc('X.call(A, "addLib", ["lib", function(){/*console.log("x");*/}])', ['ArrayExpression']).should.eql('X.call(A,"addLib",["lib",function(){/*console.log("x");*/}]);');
 	});
 });

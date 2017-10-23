@@ -4395,33 +4395,33 @@ function assignComments($node, locations, comments, parentStart, parentEnd, leve
     if (_.commentIdx === null)
         return;
 
-    var loc = locations.get($node);
-    if (!loc)
-        return;
-
     if (!level)
         level = 0;
 
-    var start = loc.start.offset;
-    var end = loc.end.offset;
+    var loc = locations.get($node);
+    var start = loc ? loc.start.offset : undefined;
+    var end = loc ? loc.end.offset : undefined;
     var commentStart = comments[_.commentIdx].start.offset;
 
-    // if there is a comment between the start of the parent and the start of this node,
-    // set it as *before* this node
-    if (parentStart <= commentStart && commentStart <= start)
+    if (start !== undefined)
     {
-        if (_.prevCommentNode)
-            _.prevCommentNode.commentAfter = undefined;
-        $node.commentBefore = _.commentIdx;
-        _.prevCommentNode = $node;
-    }
+        // if there is a comment between the start of the parent and the start of this node,
+        // set it as *before* this node
+        if (parentStart <= commentStart && commentStart <= start)
+        {
+            if (_.prevCommentNode)
+                _.prevCommentNode.commentAfter = undefined;
+            $node.commentBefore = _.commentIdx;
+            _.prevCommentNode = $node;
+        }
 
-    // if the start of this node is beyond the comment start, switch to the next comment
-    if (level > 0 && start >= commentStart)
-    {
-        ++_.commentIdx;
-        if (_.commentIdx >= comments.length)
-            _.commentIdx = null;
+        // if the start of this node is beyond the comment start, switch to the next comment
+        if (level > 0 && start >= commentStart)
+        {
+            ++_.commentIdx;
+            if (_.commentIdx >= comments.length)
+                _.commentIdx = null;
+        }
     }
 
     // recursively assign comments to the children of this node
@@ -4439,48 +4439,65 @@ function assignComments($node, locations, comments, parentStart, parentEnd, leve
             {
                 if ($n[i].type)
                 {
-                    assignComments($n[i], locations, comments, start, end, level+1);
+                    assignComments(
+                        $n[i],
+                        locations,
+                        comments,
+                        start === undefined ? parentStart : start,
+                        end === undefined ? parentEnd : end,
+                        level + 1
+                    );
                     isLeaf = false;
                 }
             }
         }
         else if ($n.type)
         {
-            assignComments($n, locations, comments, start, end, level+1);
+            assignComments(
+                $n,
+                locations,
+                comments,
+                start === undefined ? parentStart : start,
+                end === undefined ? parentEnd : end,
+                level + 1
+            );
             isLeaf = false;
         }
     }
 
-    // if this node is a leaf and there is a comment between the node's start and end,
-    // set the comment as *in* the node
-    if (isLeaf && _.commentIdx !== null && start <= comments[_.commentIdx].start.offset && comments[_.commentIdx].end.offset <= end)
+    if (start !== undefined)
     {
-        if (_.prevCommentNode)
-            _.prevCommentNode.commentAfter = undefined;
-        $node.commentIn = _.commentIdx;
-        _.prevCommentNode = $node;
-    }
-
-    // if the end of this node is beyond the comment's end, switch to the next comment
-    if (_.commentIdx !== null && end > comments[_.commentIdx].end.offset)
-    {
-        ++_.commentIdx;
-        _.prevCommentNode = null;
-        if (_.commentIdx >= comments.length)
-            _.commentIdx = null;
-    }
-
-    // if there is a comment between the end of this node and the end of the parent,
-    // set it as *after* this node
-    if (_.commentIdx !== null)
-    {
-        var commentStart = comments[_.commentIdx].start.offset;
-        if (end <= commentStart && commentStart <= parentEnd)
+        // if this node is a leaf and there is a comment between the node's start and end,
+        // set the comment as *in* the node
+        if (isLeaf && _.commentIdx !== null && start <= comments[_.commentIdx].start.offset && comments[_.commentIdx].end.offset <= end)
         {
             if (_.prevCommentNode)
                 _.prevCommentNode.commentAfter = undefined;
-            $node.commentAfter = _.commentIdx;
+            $node.commentIn = _.commentIdx;
             _.prevCommentNode = $node;
+        }
+
+        // if the end of this node is beyond the comment's end, switch to the next comment
+        if (_.commentIdx !== null && end > comments[_.commentIdx].end.offset)
+        {
+            ++_.commentIdx;
+            _.prevCommentNode = null;
+            if (_.commentIdx >= comments.length)
+                _.commentIdx = null;
+        }
+
+        // if there is a comment between the end of this node and the end of the parent,
+        // set it as *after* this node
+        if (_.commentIdx !== null)
+        {
+            var commentStart = comments[_.commentIdx].start.offset;
+            if (end <= commentStart && commentStart <= parentEnd)
+            {
+                if (_.prevCommentNode)
+                    _.prevCommentNode.commentAfter = undefined;
+                $node.commentAfter = _.commentIdx;
+                _.prevCommentNode = $node;
+            }
         }
     }
 }
