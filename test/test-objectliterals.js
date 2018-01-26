@@ -38,4 +38,9 @@ describe('Object literals', function()
 	{
 		cg('({class:0});').should.eql('({"class":0});');
 	});
+
+	it('should not add quotes to the "constructor" property', function()
+	{
+	cg('class X extends Y { constructor() {} }').should.eql('class X extends Y{constructor(){/**/}}');
+	})
 });

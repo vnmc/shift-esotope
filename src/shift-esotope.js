@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2016-2017 Matthias Christen <christen@vanamco.com>
+ Copyright (C) 2016-2018 Matthias Christen <christen@vanamco.com>
  Copyright (C) 2016-2017 Florian Müller <mueller@vanamco.com>
  Copyright (C) 2014 Ivan Nikulin <ifaaan@gmail.com>
  Copyright (C) 2012-2014 Yusuke Suzuki <utatane.tea@gmail.com>
@@ -402,7 +402,7 @@ function isIdentifierCh(cp)
 
 function isUnquotedPropertyName(s)
 {
-    if (ReservedWords[s])
+    if (ReservedWords.hasOwnProperty(s))
         return false;
 
     var len = s.length;
