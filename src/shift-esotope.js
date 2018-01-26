@@ -2202,13 +2202,13 @@ var ExprRawGen = {
     {
         addCommentBefore($expr);
 
-        _.js += '[';
-        ++_.col;
+        _.js += '[(';
+        _.col += 2;
 
         ExprGen[$expr.expression.type]($expr.expression, Preset.e5);
 
-        _.js += ']';
-        ++_.col;
+        _.js += ')]';
+        _.col += 2;
 
         addCommentAfter($expr);
     },

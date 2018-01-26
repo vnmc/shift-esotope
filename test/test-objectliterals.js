@@ -41,6 +41,11 @@ describe('Object literals', function()
 
 	it('should not add quotes to the "constructor" property', function()
 	{
-	cg('class X extends Y { constructor() {} }').should.eql('class X extends Y{constructor(){/**/}}');
-	})
+		cg('class X extends Y { constructor() {} }').should.eql('class X extends Y{constructor(){/**/}}');
+	});
+
+	it('should put computed member expressions in brackets', function()
+	{
+		cg('({[(x=1,2)]:0});').should.eql('({[(x=1,2)]:0});');
+	});
 });
