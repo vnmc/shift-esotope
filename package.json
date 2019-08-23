@@ -3,7 +3,7 @@
   "description": "ECMAScript code generator for the Shift AST",
   "homepage": "http://github.com/vnmc/shift-esotope",
   "main": "src/shift-esotope.js",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "engines": {
     "node": ">=0.10.0"
   },

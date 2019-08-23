@@ -69,6 +69,7 @@ var isArray,
     pureSourcemap;
 
 var Syntax = {
+    _MultiStatement:                    '_MultiStatement',
     ArrayBinding:                       'ArrayBinding',
     ArrayAssignmentTarget:              'ArrayAssignmentTarget',
     ArrayExpression:                    'ArrayExpression',
@@ -2877,7 +2878,7 @@ var StmtRawGen = {
             if (_.newlineResetsCol)
                 _.col = _.newlineNumCols;
             else
-                _.co += _.newlineNumCols;
+                _.col += _.newlineNumCols;
         }
 
         _.indent = prevIndent;
@@ -2896,6 +2897,37 @@ var StmtRawGen = {
 
         addCommentBefore($stmt);
         StmtGen[$block.type]($block, settings);
+        addCommentAfter($stmt);
+    },
+
+    _MultiStatement: function generateMultiStatement($stmt, settings)
+    {
+        var $body = $stmt.statements,
+            len = $body.length,
+            lastIdx = len - 1;
+
+        if (sourcemap)
+            addMapping($stmt);
+
+        addCommentBefore($stmt);
+
+        for (var i = 0; i < len; ++i)
+        {
+            var $item = $body[i];
+
+            _.js += _.indent;
+            _.col += _.indent.length;
+
+            StmtGen[$item.type]($item, Preset.s1(settings.functionBody, i === lastIdx));
+
+            _.js += _.newline;
+            _.line += _.newlineNumLines;
+            if (_.newlineResetsCol)
+                _.col = _.newlineNumCols;
+            else
+                _.col += _.newlineNumCols;
+        }
+
         addCommentAfter($stmt);
     },
 
